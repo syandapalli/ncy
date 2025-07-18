@@ -39,6 +39,12 @@ func addModules(modules *yang.Modules) {
 	}
 }
 
+func printModules() {
+	for _, mod := range modulesByName {
+		printModule(mod)
+	}
+}
+
 func main() {
 	var indir, outdir, apiIndir string
 	getopt.StringVarLong(&indir, "indir", 'i', "directory to look for yang files")
@@ -63,6 +69,7 @@ func main() {
 		}
 	}
 	addModules(ms)
+	printModules()
 	/*
         for _, sm := range ms.SubModules {
                 fmt.Println("Submodule:", sm.Kind(), sm.NName(), sm.BelongsTo.Prefix.Name)

@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strconv"
+	//"strconv"
 
 	"github.com/openconfig/goyang/pkg/yang"
 
@@ -23,6 +23,92 @@ func getEntries(c *yang.Container) []yang.Node {
 		e = append(e, l)
 	}
 	return e
+}
+
+func printIndent(indent int) {
+	for indent > 0 {
+		fmt.Print("\t")
+		indent = indent -1
+	}
+}
+func printNode(n yang.Node, indent int) {
+	printIndent(indent)
+	fmt.Println(n.Kind(), n.NName())
+	switch n.Kind() {
+	case "container":
+		c := n.(*yang.Container)
+		for _, l := range c.Leaf {
+			printNode(l, indent + 1)
+		}
+		for _, g := range c.Grouping {
+			printNode(g, indent + 1)
+		}
+		for _, u := range c.Uses {
+			printNode(u, indent + 1)
+		}
+		for _, l := range c.List {
+			printNode(l, indent + 1)
+		}
+	case "grouping":
+		g := n.(*yang.Grouping)
+		for _, l := range g.Leaf {
+			printNode(l, indent + 1)
+		}
+		for _, g := range g.Grouping {
+			printNode(g, indent + 1)
+		}
+		for _, c := range g.Container {
+			printNode(c, indent + 1)
+		}
+		for _, u := range g.Uses {
+			printNode(u, indent + 1)
+		}
+		for _, l := range g.List {
+			printNode(l, indent + 1)
+		}
+	case "list":
+		l := n.(*yang.List)
+		for _, lf := range l.Leaf {
+			printNode(lf, indent + 1)
+		}
+		for _, g := range l.Grouping {
+			printNode(g, indent + 1)
+		}
+		for _, c := range l.Container {
+			printNode(c, indent + 1)
+		}
+		for _, u := range l.Uses {
+			printNode(u, indent + 1)
+		}
+		for _, ls := range l.List {
+			printNode(ls, indent + 1)
+		}
+	}
+}
+func printYangModule(m *yang.Module, indent int) {
+	printIndent(indent)
+	fmt.Println("Yang Module:", m.NName())
+	for _, l := range m.Leaf {
+		printNode(l, indent + 1)
+	}
+	for _, c := range m.Container {
+		printNode(c, indent + 1)
+	}
+	for _, g := range m.Grouping {
+		printNode(g, indent + 1)
+	}
+	for _, a := range m.Augment {
+		printNode(a, indent + 1)
+	}
+}
+
+func printModule(m *Module) {
+	fmt.Println("Module:", m.name)
+	indent := 0
+	for _, sm := range m.submodules {
+		mod := sm.module	
+		printYangModule(mod, indent + 1)
+	}
 }
 
 // Function that emits the name of the node in a short form
@@ -377,8 +463,9 @@ func getNodeByName(mod *Module, curr yang.Node, name string, leaf bool) (*Module
 		}
 	} else {
 		for _, sm := range mod.submodules {
-			c := sm.module
-			nmod, node := getNodeFromContainer(mod, c, name, leaf)
+			m := sm.module
+			// TODO Changed to module from container. Verify
+			nmod, node := getNodeByName(mod, m, name, leaf)
 			if node != nil {
 				return nmod, node
 			}
@@ -412,22 +499,26 @@ func getNodeWithUsesFromMod(mod *Module, modname string, name string) (*Module, 
 	}
 	return nil, nil
 }
-func getNodeWithUses(c yang.Container, modname string, name string) yang.Node {
-	for _, e := range c.GetEntries() {
-		if lc, ok := e.(yang.Container); ok {
+func getNodeWithUses(n yang.Node, modname string, name string) yang.Node {
+	if m, ok := n.(*yang.Module); ok {
+		for _, lc := range m.Container {
 			if node := getNodeWithUses(lc, modname, name); node != nil {
 				return node
 			}
-		} else if e.Kind() == "uses" {
+		}
+	}
+	if lc, ok := n.(*yang.Container); ok {
+		for _, e := range lc.Uses {
 			uname := getName(e.NName())
 			upre := getPrefix(e.NName())
 			ymod := getMyYangModule(e)
 			umodname := getModuleNameFromPrefix(ymod, upre)
 			if uname == name && modname == umodname {
-				return e
+					return e
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -649,6 +740,7 @@ func storeInGroupingMap(prefix string, g yang.Node) {
 	//fmt.Println("storing grouping:", g.NName())
 	groupingMap[prefix+":"+g.NName()] = g
 }
+/*
 func mergeModules() {
 	for _, mods := range prefixModulesMap {
 		// There may be multiple submodules for same prefix. Use the base module. and also merge all entries.
@@ -665,9 +757,11 @@ func mergeModules() {
 		prefixModuleMap[p] = m
 	}
 }
+*/
 
 // getAllNodesFromPath builds the list with all the nodes from yang in proper order so that
 // the variables can be set properly later.
+/*
 func getAllNodesFromPath(path string) []*NodeInfo {
 	if !strings.HasPrefix(path, "/") {
 		log.Fatalf("Path has to start with root '/'")
@@ -754,7 +848,7 @@ func getMatchedNode(node yang.Node, m *yang.Module, prefix, entry string) (*yang
 	return nil, nil
 }
 
-func getMatchedNodeInside(c yang.Container, m *yang.Module, prefix, entry string) (*yang.Node, *yang.Module) {
+func getMatchedNodeInside(c *yang.Container, m *yang.Module, prefix, entry string) (*yang.Node, *yang.Module) {
 	// if input prefix and current mod prefix is not matching then search in augments
 	if m.Prefix.Name != prefix {
 		augMod, ok := prefixModuleMap[prefix]
@@ -1142,3 +1236,4 @@ func addPrefixToDatatypeIfRequired(datatype string, prefix string) string {
 		return prefix + "." + datatype
 	}
 }
+*/

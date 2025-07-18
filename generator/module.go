@@ -10,9 +10,15 @@ import (
 	"github.com/openconfig/goyang/pkg/yang"
 )
 
-// Module structure to hold precomputed information for easy access
-// initfunc has a list of statements that should be written to the
-// init() function after processing the module
+// Moudle structure design ************************
+// Module maps to "module" of yang specification. As module may contain
+// submodules, the design choice is to have the basic module itself embedded
+// inside a module as a submodule. The Module struct is a shell which at 
+// a minimum has one module in it even if it doesn't contain any submodules
+// in the yang schema
+
+// initfunc field has a list of statements that should be written to the
+// init() function of the module in the generated code TODO review
 type ModuleType int
 
 const (
@@ -38,13 +44,14 @@ type Module struct {
 	imports                 map[string]string
 	identities              map[string]*yang.Identity
 	submodules              map[string]*SubModule
-	module                  *yang.Module
 }
 
 func (m *Module) Print() {
 	fmt.Println("------------ Name:", m.name, "NS:", m.namespace)
-	for _, r := range(m.module.Revision) {
-		fmt.Println("\tRevision:", r.NName())
+	for _, sm := range m.submodules {
+		for _, r := range(sm.module.Revision) {
+			fmt.Println("\tRevision:", r.NName())
+		}
 	}
 }
 
@@ -58,7 +65,6 @@ func NewModule(m *yang.Module) *Module {
 	mod.submodules = make(map[string]*SubModule)
 	mod.namespace = m.Namespace.Name
 	mod.prefix = m.Prefix.Name
-	mod.module = m
 
 	submod := &SubModule{}
 	submod.mtype = TypeModule
