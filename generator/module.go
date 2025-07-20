@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	//"io"
-	//"os"
-	//"path"
-	//"strings"
+	"io"
+	"os"
+	"path"
+	"strings"
 
 	"github.com/openconfig/goyang/pkg/yang"
 )
@@ -37,6 +37,14 @@ type SubModule struct {
 
 var submodToMod = map[string]string{}
 
+// Each module as in YANG specification has the following: a name, 
+// a prefix (a short form for reference), a namespace, // etc.
+// * field "identities" is introduced to capture the result of 
+// preprocessing of identities as consolidation is needed for 
+// generating the code related to identifies.
+// * field submodules includes all submodules of the module of which
+// the module itself is one. This is because it makes the logic
+// more maintainable and easy to write and read.
 type Module struct {
 	name                    string
 	prefix                  string
@@ -46,16 +54,7 @@ type Module struct {
 	submodules              map[string]*SubModule
 }
 
-func (m *Module) Print() {
-	fmt.Println("------------ Name:", m.name, "NS:", m.namespace)
-	for _, sm := range m.submodules {
-		for _, r := range(sm.module.Revision) {
-			fmt.Println("\tRevision:", r.NName())
-		}
-	}
-}
-
-// Constructor
+// Constructor for structure Module
 func NewModule(m *yang.Module) *Module {
 	mod := &Module{}
 	mod.name = m.NName()
@@ -66,6 +65,8 @@ func NewModule(m *yang.Module) *Module {
 	mod.namespace = m.Namespace.Name
 	mod.prefix = m.Prefix.Name
 
+	// Add the module also as a submodule which is used
+	// for any processing related to generation of code
 	submod := &SubModule{}
 	submod.mtype = TypeModule
 	submod.module = m
@@ -167,7 +168,6 @@ func (m *Module) preprocessModule() {
 	m.preprocessAugments()
 }
 
-/*
 // This function generates the common initial part of the go file for a
 // module.
 func fileHeader(mod *Module, submod *SubModule, w io.Writer, keepXmlID bool) {
@@ -253,7 +253,7 @@ func processModule(mod *Module, outdir string) {
 func processSubModule(mod *Module, submod *SubModule, outdir string) {
 	// prepare the essentials for the module
 	m := submod.module
-	inpath := m.Source.GetFile()
+	inpath := m.Source.Location()
 	_, file := path.Split(inpath)
 	outpath := outdir + "/yang-go/" + file
 	// If outpath is not present then create it.
@@ -269,7 +269,9 @@ func processSubModule(mod *Module, submod *SubModule, outdir string) {
 	for _, u := range submod.module.Uses {
 		groupingNames[u.Name] = struct{}{}
 	}
-	keepXmlID := checkIfNcImportRequired(submod.module.Entries, groupingNames)
+	// TODO
+	//keepXmlID := checkIfNcImportRequired(submod.module.Entries, groupingNames)
+	keepXmlID := true
 
 	// Create file header
 	fileHeader(mod, submod, w, keepXmlID)
@@ -277,9 +279,9 @@ func processSubModule(mod *Module, submod *SubModule, outdir string) {
 	//entries := mergeAugmentsWithSamePath(submod.module.Entries)
 	// process the entries of the module
 
-	for _, e := range submod.module.Entries {
-		processEntry(w, mod, m, e, keepXmlID)
-	}
+	//for _, e := range submod.module.Entries {
+	//	processEntry(w, mod, m, e, keepXmlID)
+	//}
 
 	// generate the init() function
 	fmt.Fprintf(w, "func init() {\n")
@@ -356,4 +358,3 @@ func processEntry(w io.Writer, mod *Module, m *yang.Module, n yang.Node, keepXml
 		processAugments(w, mod, m, n)
 	}
 }
-*/

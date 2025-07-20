@@ -68,12 +68,18 @@ func main() {
 			panic("Cannot open file: " + err.Error())
 		}
 	}
-	addModules(ms)
-	printModules()
+	//printModules()
 	/*
+	fmt.Println("Modules-----------------")
+        for _, m := range ms.Modules {
+                fmt.Println("Module:", m.Kind(), m.NName())
+        }
+	fmt.Println("Submodules-----------------")
         for _, sm := range ms.SubModules {
                 fmt.Println("Submodule:", sm.Kind(), sm.NName(), sm.BelongsTo.Prefix.Name)
         }
+	*/
+	addModules(ms)
         for _, m := range modulesByName {
                 m.preprocessModule()
         }
@@ -81,6 +87,7 @@ func main() {
                 processModule(m, outdir)
         }
 
+	/*
         if apiIndir != "" {
                 processStructsAndApis(apiIndir, outdir)
         }
