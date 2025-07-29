@@ -1,6 +1,5 @@
 package main
 import (
-	"fmt"
 	"log"
 	"strings"
 	"io/ioutil"
@@ -60,32 +59,22 @@ func main() {
 	}
 
 	files := readDir(indir, "yang")
-	fmt.Println("Number files = ", len(files))
+	debuglog("Number files = %d", len(files))
 	ms := yang.NewModules()
 	for _, file := range files {
 		err := ms.Read(file)
 		if err != nil {
-			panic("Cannot open file: " + err.Error())
+			errorlog("Cannot open file: %s", err.Error())
 		}
 	}
-	//printModules()
-	/*
-	fmt.Println("Modules-----------------")
-        for _, m := range ms.Modules {
-                fmt.Println("Module:", m.Kind(), m.NName())
-        }
-	fmt.Println("Submodules-----------------")
-        for _, sm := range ms.SubModules {
-                fmt.Println("Submodule:", sm.Kind(), sm.NName(), sm.BelongsTo.Prefix.Name)
-        }
-	*/
 	addModules(ms)
-        for _, m := range modulesByName {
-                m.preprocessModule()
-        }
-        for _, m := range modulesByName {
-                processModule(m, outdir)
-        }
+	//printModules()
+	for _, m := range modulesByName {
+		m.preprocessModule()
+	}
+	for _, m := range modulesByName {
+		processModule(m, outdir)
+	}
 
 	/*
         if apiIndir != "" {

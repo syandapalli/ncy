@@ -31,7 +31,7 @@ func processGrouping(w io.Writer, mod *Module, ymod *yang.Module, n yang.Node, k
 	// Check the precondtions before we dive deep in
 	g, ok := n.(*yang.Grouping)
 	if !ok {
-		panic("Not Grouping.")
+		errorlog("Not a Grouping:%s", n.NName())
 	}
 
 	// Add comment to describe the source of the generated code
@@ -43,8 +43,23 @@ func processGrouping(w io.Writer, mod *Module, ymod *yang.Module, n yang.Node, k
 	addNs := groupingInAugment(ymod, g)
 
 	// The code below generates code for the grouping
+	debuglog("Generating for group %s", g.NName())
 	fmt.Fprintf(w, "type %s struct {\n", genTN(ymod, g.NName()))
-	generateFields(w, ymod, g, addNs)
+	for _, l1 := range g.Leaf {
+		generateField(w, ymod, l1, addNs)
+	}
+	for _, c1 := range g.Container {
+		generateField(w, ymod, c1, addNs)
+	}
+	for _, g1 := range g.Grouping {
+		generateField(w, ymod, g1, addNs)
+	}
+	for _, l1 := range g.List {
+		generateField(w, ymod, l1, addNs)
+	}
+	for _, u1 := range g.Uses {
+		generateField(w, ymod, u1, addNs)
+	}
 	fmt.Fprintf(w, "}\n")
 
 	// Generate runtime namespace function
@@ -52,14 +67,89 @@ func processGrouping(w io.Writer, mod *Module, ymod *yang.Module, n yang.Node, k
 
 	// The code below triggers the code generation for the
 	// constituents of the grouping
-	generateTypes(w, ymod, g, keepXmlID)
+	for _, l1 := range g.Leaf {
+		generateTypes(w, ymod, l1, addNs)
+	}
+	for _, c1 := range g.Container {
+		generateTypes(w, ymod, c1, addNs)
+	}
+	for _, g1 := range g.Grouping {
+		generateTypes(w, ymod, g1, addNs)
+	}
 	fmt.Fprintf(w, "\n")
 
 	storeInGroupingMap(mod.prefix, n)
 }
 
+// Namespace is an important aspect of NC/XML. This function allows us to return
+// namespace for the structures we generate in a granular fashion.
 func generateRuntimeNs(w io.Writer, mod *Module, ymod *yang.Module, g *yang.Grouping) {
 	fmt.Fprintf(w, "func (x %s) RuntimeNs() string {\n", genTN(ymod, g.NName()))
 	fmt.Fprintf(w, "\treturn %s_ns\n", genFN(mod.name))
 	fmt.Fprintf(w, "}\n")
 }
+
+// Get a node with a specific name from within the grouping. We iterate through
+// the fields and return if the name matches. The treatment of 'uses' is different
+// as the fields of grouping included using 'uses' is inserted as is the node where
+// it is included. Thus, for 'uses', we need to iterate through the fields of the
+// included grouping.
+// TODO. The iteration for 'uses' is not implemented yet
+func getNodeFromGrouping(mod *Module, n yang.Node, name string, leaf bool) yang.Node {
+	g, ok := n.(*yang.Grouping)
+	if !ok {
+		errorlog("a non grouping passed: %s", g.Kind())
+		return nil
+	}
+	for _, c1 := range g.Container {
+		if c1.NName() == name {
+			return c1
+		}
+	}
+	for _, c1 := range g.Leaf {
+		if c1.NName() == name {
+			return c1
+		}
+	}
+	for _, c1 := range g.LeafList {
+		if c1.NName() == name {
+			return c1
+		}
+	}
+	for _, u1 := range g.Uses {
+		if node := getGroupingFromMod(mod, u1.NName()); node != nil {
+			return node
+		}
+	}
+	return nil
+}
+
+// This is used to locate a grouping based on where it is instantiated
+// Typically a grouping is instantiated using "uses" construct of YANG
+// The inclusion may be recursively anywhere inside the hierarchical nature
+// of YANG structures. We search recursively till we locate the node
+func getNodeWithUsesFromGrouping(g *yang.Grouping, name string) yang.Node {
+	for _, u1 := range g.Uses {
+		if u1.NName() == name {
+			return g
+		}
+	}
+	for _, g1 := range g.Grouping {
+		if n := getNodeWithUsesFromGrouping(g1, name); n != nil {
+			return n
+		}
+	}
+	for _, c1 := range g.Container {
+		if n := getNodeWithUsesFromContainer(c1, name); n != nil {
+			return n
+		}
+	}
+	for _, l1 := range g.List {
+		if n := getNodeWithUsesFromList(l1, name); n != nil {
+			return n
+		}
+	}
+	return nil
+}
+
+

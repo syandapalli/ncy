@@ -13,6 +13,17 @@ import (
 	"strings"
 )
 
+var debugenabled bool = false
+
+func debuglog(format string, args ...interface{}) {
+	if debugenabled {
+		fmt.Printf("DEBUG: " + format + "\n", args...)
+	}
+}
+func errorlog(format string, args ...interface{}) {
+	fmt.Printf("ERROR: " + format + "\n", args...)
+}
+
 var prefixModulesMap = map[string][]*yang.Module{}
 var prefixModuleMap = map[string]*yang.Module{}
 var groupingMap = map[string]yang.Node{}
@@ -31,6 +42,10 @@ func printIndent(indent int) {
 		indent = indent -1
 	}
 }
+
+func fullName(n yang.Node) {
+}
+
 func printNode(n yang.Node, indent int) {
 	printIndent(indent)
 	fmt.Println(n.Kind(), n.NName())
@@ -100,14 +115,8 @@ func printYangModule(m *yang.Module, indent int) {
 	for _, a := range m.Augment {
 		printNode(a, indent + 1)
 	}
-}
-
-func printModule(m *Module) {
-	fmt.Println("Module:", m.name)
-	indent := 0
-	for _, sm := range m.submodules {
-		mod := sm.module	
-		printYangModule(mod, indent + 1)
+	for _, u := range m.Uses {
+		printNode(u, indent + 1)
 	}
 }
 
@@ -118,7 +127,7 @@ func nodeString(node yang.Node) string {
 }
 
 // Function to fully describe the node
-func nodeStringFull(node yang.Node) string {
+func nodeContextStr(node yang.Node) string {
 	var mname string
 	ymod := getMyYangModule(node)
 	if ymod.BelongsTo != nil {
@@ -167,6 +176,16 @@ func getModulePrefix(m *yang.Module) string {
 		return mod.prefix
 	}
 	return ""
+}
+
+// 
+func getFullName(n yang.Node) string {
+	fn := n.NName()
+	for n.ParentNode().Kind() != "module" {
+		n = n.ParentNode()
+		fn = n.NName() + "_" + fn
+	}
+	return fn
 }
 
 // Generates a suitable type name to be used. If the type is
@@ -368,7 +387,7 @@ func getNodeFromModule(mod *Module, name string, needleaf bool) yang.Node {
 // recursive. Such a traversal can switch the module and thus we
 // need to return both module and node to further the traversal thereon
 func getFromUsesNode(n yang.Node, name string, needleaf bool) (*Module, yang.Node) {
-	//fmt.Println("getFromUsesNode() - Looking for", name, "in", nodeStringFull(n))
+	//debuglog("getFromUsesNode() - Looking for", name, "in", nodeContextStr(n))
 	u, ok := n.(*yang.Uses)
 	if !ok {
 		panic("Not a Uses node")
@@ -390,57 +409,8 @@ func getFromUsesNode(n yang.Node, name string, needleaf bool) (*Module, yang.Nod
 		return mod, nil
 	}
 	if c, ok := node.(*yang.Container); ok {
-		return getNodeFromContainer(mod, c, name, needleaf)
+		return mod, getNodeFromContainer(mod, c, name, needleaf)
 	}
-	return mod, nil
-}
-
-// Get node from a container. This function does not know the
-// type of container and just examines the entries in the container
-// to locate the node by name. It may even have to traverse nodes
-// of another node included using "uses" of yang.
-func getNodeFromContainer(mod *Module, c *yang.Container, name string, needleaf bool) (retm *Module, retn yang.Node) {
-	//fmt.Println("getNodeFromContainer() - looking for",  name, "in", nodeStringFull(c))
-	defer func() {
-		if retn == nil {
-			//fmt.Println("getNodeFromContainer() - return nil node")
-		} else {
-			//fmt.Println("getNodeFromContainer() - return with module =", retm.name, "node =", nodeStringFull(retn))
-		}
-	}()
-	//for _, e := range c.GetEntries() {
-	for _, e := range getEntries(c) {
-		if e.Kind() == "uses" {
-			if mod, node := getFromUsesNode(e, name, needleaf); node != nil {
-				return mod, node
-			}
-		}
-		if e.NName() == name {
-			if needleaf {
-				if e.Kind() == "leaf" {
-					return mod, e
-				}
-			} else {
-				if e.Kind() == "grouping" || e.Kind() == "container" ||
-					e.Kind() == "augment" || e.Kind() == "list" ||
-					e.Kind() == "leaf-list" {
-					return mod, e
-				}
-			}
-		}
-	}
-	/*
-		for _, a := range c.GetAugments() {
-			aug, ok := a.(*yang.Augment)
-			if !ok {
-				panic("The node from GetAugments() is not an augment: " + nodeStringFull(a))
-			}
-			if e := getNodeFromAugment(aug, name); e != nil {
-				nmod := getMyModule(e)
-				return nmod, e
-			}
-		}
-	*/
 	return mod, nil
 }
 
@@ -449,36 +419,63 @@ func getNodeFromContainer(mod *Module, c *yang.Container, name string, needleaf 
 // entries within the type pointed by uses. Thus, the traversal
 // can be recursive.
 func getNodeByName(mod *Module, curr yang.Node, name string, leaf bool) (*Module, yang.Node) {
-	// fmt.Println("getNodeByName() - Looking for", name, "in curr node", curr.NName())
-	if curr != nil {
-		// Since current node is passed, the searching for the next node is performed
-		// within the current node. The node passed must be a container which has a
-		// list of entries to search from
-		c, ok := curr.(*yang.Container)
-		if ok {
-			return getNodeFromContainer(mod, c, name, leaf)
-		} else {
-			fmt.Println("ERROR: Not a container:", nodeStringFull(curr))
-			return mod, nil
-		}
-	} else {
-		for _, sm := range mod.submodules {
-			m := sm.module
-			// TODO Changed to module from container. Verify
-			nmod, node := getNodeByName(mod, m, name, leaf)
-			if node != nil {
-				return nmod, node
-			}
-		}
+	if curr == nil {
+		node := getNodeFromMod(mod, name)
+		return mod, node
+	}
+	switch curr.Kind() {
+	case "grouping":
+		return mod, getNodeFromGrouping(mod, curr, name, false)
+	case "container":
+		return mod, getNodeFromContainer(mod, curr.(*yang.Container), name, false)
+	case "list":
+		return mod, getNodeFromList(mod, curr.(*yang.List), name, false)
 	}
 	return mod, nil
 }
 
+func getNodeFromMod(mod *Module, name string) yang.Node {
+	debuglog("Getting %s from module %s", name, mod.name)
+	for _, sm := range mod.submodules {
+		ymod := sm.module
+		for _, g1 := range ymod.Grouping  {
+			if g1.NName() == name {
+				return g1
+			}
+		}
+		for _, u1 := range ymod.Uses {
+			if n := getNodeFromUses(mod, u1, name); n != nil {
+				return n
+			}
+		}
+	}
+	return nil
+}
+
+func getNodeFromUses(mod *Module, u *yang.Uses, name string) yang.Node {
+	// Get the name of the uses and the corresponding grouping from
+	// the module if module is mentioned in the name. If not, the
+	// current module should be used to locate the grouping
+	debuglog("Getting %s from uses %s", name, u.NName())
+	prefix := getPrefix(u.NName())
+	uname := getName(u.NName())
+	if prefix != "" {
+		mod := getModuleByPrefix(prefix)
+		if mod == nil {
+			return nil
+		}
+	}
+	grouping := getNodeFromMod(mod, uname)
+	if grouping == nil {
+		return nil
+	}
+	return getNodeFromGrouping(mod, grouping, name, false)
+}
+
 // Locate the node from the entire set of modules from the uses.
 func getNodeWithUsesGlobal(modname string, name string) (*Module, yang.Node) {
-	//fmt.Println("getNodeWithUsesGlobal() - Searching for", name)
 	for _, mod := range modulesByName {
-		_, node := getNodeWithUsesFromMod(mod, modname, name)
+		node := getNodeWithUsesFromMod(mod, modname, name)
 		if node != nil {
 			return mod, node
 		}
@@ -489,36 +486,19 @@ func getNodeWithUsesGlobal(modname string, name string) (*Module, yang.Node) {
 // Locate the node that includes the uses with the name. The search
 // is recursive. This node could be included in any submodule or module
 // associated with the submodule.
-func getNodeWithUsesFromMod(mod *Module, modname string, name string) (*Module, yang.Node) {
+func getNodeWithUsesFromMod(mod *Module, modname string, name string) yang.Node {
 	for _, sm := range mod.submodules {
-		// fmt.Println("getNodeWithUsesFromMod() - Searching for", name, "in", sm.module.Name)
-		if node := getNodeWithUses(sm.module, modname, name); node != nil {
-			//fmt.Println("getNodeWithUsesFromMod() - Found node", nodeStringFull(node))
-			return mod, node
+		for _, g := range sm.module.Grouping {
+			if node := getNodeWithUsesFromGrouping(g, name); node != nil {
+				return node
+			}
 		}
-	}
-	return nil, nil
-}
-func getNodeWithUses(n yang.Node, modname string, name string) yang.Node {
-	if m, ok := n.(*yang.Module); ok {
-		for _, lc := range m.Container {
-			if node := getNodeWithUses(lc, modname, name); node != nil {
+		for _, c := range sm.module.Container {
+			if node := getNodeWithUsesFromContainer(c, name); node != nil {
 				return node
 			}
 		}
 	}
-	if lc, ok := n.(*yang.Container); ok {
-		for _, e := range lc.Uses {
-			uname := getName(e.NName())
-			upre := getPrefix(e.NName())
-			ymod := getMyYangModule(e)
-			umodname := getModuleNameFromPrefix(ymod, upre)
-			if uname == name && modname == umodname {
-					return e
-			}
-		}
-	}
-
 	return nil
 }
 
@@ -538,7 +518,7 @@ func getNodeFromAugments(path, part string, node yang.Node) (*Module, yang.Node)
 	for _, sm := range mod.submodules {
 		for _, aug := range sm.module.Augment {
 			if aug.Name == path {
-				//fmt.Println("getNodeFromAugments() - Located augment node", nodeStringFull(aug))
+				//debuglog("getNodeFromAugments() - Located augment node %s", nodeContextStr(aug))
 				node := getNodeFromAugment(aug, part)
 				if node != nil {
 					return mod, node
@@ -574,12 +554,13 @@ func traverse(path string, node yang.Node, needleaf bool) yang.Node {
 	var root bool = false
 	var mod, nmod *Module
 	var accPath string
+	var curr, next yang.Node
 
 	// Complete some initialization
 	mod = getMyModule(node)
 	ymod := getMyYangModule(node)
-	curr := node
-	next := node
+	curr = node
+	next = node
 
 	// yang supports quite a varied set of capabilities and we do not intend support them all.
 	// We are going to trim a known form which has text between '[' and ']'. The removal
@@ -616,71 +597,43 @@ func traverse(path string, node yang.Node, needleaf bool) yang.Node {
 	// collected earlier
 	nmod = mod
 	for i, part := range parts {
-		// From the "part", identify the module and name to search for.
-		// The module is derived from the prefix in the "part".
-		pre := getPrefix(part)
-		if pre != "" {
-			ym := getMyYangModule(node)
-			nmod := getImportedModuleByPrefix(ym, pre)
-			if nmod == nil {
-				//fmt.Println("ERROR: traverse() - module couldn't be found for prefix =", pre)
-				return nil
-			}
-			if nmod != mod {
-				next = nil
-			}
-		}
-		name := getName(part)
-		//fmt.Println("Accumulated path =", accPath)
-		switch name {
+		debuglog("Searching for \"%s\": iteration = %d/%d Accumulated path = %s", part, i, len(parts), accPath)
+		switch part {
 		case "..":
-			for next.Kind() == "grouping" {
+			next = next.ParentNode()
+			if next.Kind() == "grouping" {
+				debuglog("Finding uses node %s in iteration = %d", next.NName(), i)
 				nmod, next = getNodeWithUsesGlobal(nmod.name, next.NName())
 				if next == nil {
+					debuglog("Failed to find node that uses %s", curr.NName())
 					break
 				}
-				next = next.ParentNode()
-				// fmt.Println("Index",i,"/",len(parts), "Located node:", nodeStringFull(next))
 			}
-			if next == nil {
-				break
-			}
-			next = next.ParentNode()
-			//fmt.Println("Index",i,"/",len(parts), "Leaving with node: ", nodeStringFull(next))
+			//debuglog("Leaving with node %s for \"..\" - iteration %d/%d", next.NName(), i, len(parts))
 		default:
+			// From the "part", identify the module and name to search for.
+			// The module is derived from the prefix in the "part".
+			pre  := getPrefix(part)
+			name := getName(part)
+			if pre != "" {
+				ym := getMyYangModule(node)
+				nmod := getImportedModuleByPrefix(ym, pre)
+				if nmod == nil {
+					errorlog("traverse() - module couldn't be found for prefix = %s", pre)
+					return nil
+				}
+				if mod != nmod {
+					next = nil
+				}
+			}
 			// Locate the node in the current container
 			nmod, next = getNodeByName(nmod, next, name, needleaf && i == (len(parts)-1))
-			if next == nil {
-				// We didn't find it here so look for other places the same container
-				// is included using "uses"
-				next = curr
-				for next.Kind() == "grouping" {
-					nmod, next = getNodeWithUsesGlobal(nmod.name, next.NName())
-					if next == nil {
-						break
-					}
-					next = next.ParentNode()
-					//fmt.Println("Index",i,"/",len(parts), "Located node:", nodeStringFull(next))
-				}
-				if next == nil {
-					break
-				}
-				// fmt.Println("Index",i,"/",len(parts), "looking for", name, "@", nodeStringFull(next))
-				nmod, next = getNodeByName(nmod, next, name, needleaf && i == (len(parts)-1))
-			}
-			// Look for augments to locate the node
-			if next == nil {
-				nmod, next = getNodeFromAugments(accPath, part, node)
-			}
-			if next != nil {
-				//fmt.Println("Index",i,"/",len(parts), "Leaving with node", nodeStringFull(next))
-			}
 		}
-		if next == nil {
-			fmt.Println("ERROR: traversal failed at index =", i, ", path =", path)
-			return nil
+		if next != nil {
+			debuglog("Found: index = %d/%d next node = %s", i, len(parts), next.NName())
 		} else {
-			// fmt.Println("Trace: index =", i, "/", len(parts), "next node =", nodeStringFull(next))
+			errorlog("traversal failed at index=%d name=%s, accPath=%s", i, curr.NName(), accPath)
+			break
 		}
 		accPath = accPath + "/" + part
 		curr = next
@@ -689,33 +642,6 @@ func traverse(path string, node yang.Node, needleaf bool) yang.Node {
 	return curr
 }
 
-// Find a leaf for a leafref which may even be recursive. Traverse
-// till you find a node that isn't leafref
-func getLeaf(path string, m *yang.Module, n yang.Node) *yang.Leaf {
-	// Traverse the tree to fetch the node pointed to by the leafref.
-	//fmt.Println("Trace: ************* fetching leaf for path =", path, "node =", n.NName())
-	node := traverse(path, n, true)
-	if node == nil {
-		return nil
-	}
-	l, ok := node.(*yang.Leaf)
-	if !ok {
-		fmt.Println("ERROR: Found", nodeStringFull(node), "for path", path)
-	}
-
-	// Here we handle the case of a leafref pointing to another leafref and
-	// so on. This lower portion addresses recursive traversal to locate the
-	// final leaf of interest
-	if l.Type.Name == "leafref" {
-		// fmt.Println("Trace: ************** found leafref path =", l.Type.Path.Name)
-		mod := getMyModule(l)
-		if mod == nil {
-			panic("Module not found for " + path + "leaf =" + l.Name)
-		}
-		return getLeaf(l.Type.Path.Name, m, l)
-	}
-	return l
-}
 
 func ensureDirectory(path string) {
 	dirName := filepath.Dir(path)
@@ -726,18 +652,13 @@ func ensureDirectory(path string) {
 	}
 }
 
-// To keep the fmt import always in :)
-func dummy() {
-	fmt.Println("dummy")
-}
-
 func storeInPrefixModuleMap(m *yang.Module) {
-	//fmt.Println("storing mod for prefix:", m.GetPrefix())
+	//debuglog("storing mod for prefix: %s", m.GetPrefix())
 	p := getYangPrefix(m)
 	prefixModulesMap[p] = append(prefixModulesMap[p], m)
 }
 func storeInGroupingMap(prefix string, g yang.Node) {
-	//fmt.Println("storing grouping:", g.NName())
+	//debuglog("storing grouping: %s", g.NName())
 	groupingMap[prefix+":"+g.NName()] = g
 }
 /*
@@ -795,14 +716,14 @@ func getAllNodesFromPath(path string) []*NodeInfo {
 		// Try to dig inside node for next element if node is not nil
 		if node != nil {
 			parentNodeInfo := nodeInfo
-			//fmt.Println("node check: ", (*node).NName(), entry)
+			//debuglog("node check: ", (*node).NName(), entry)
 			node, mod = getMatchedNode(*node, mod, prefix, entry)
 			if node == nil {
 				log.Fatalf("Did not find any node in yang for %s:%s", prefix, entry)
 			}
 			nodeInfo = &NodeInfo{node, mod, parentNodeInfo}
 			nodes = append(nodes, nodeInfo)
-			//fmt.Println("node added: ", (*node).NName())
+			//debuglog("node added: ", (*node).NName())
 		} else {
 			// If node is nil that means it is the 1st node. Try to find it from grouping.
 			for _, e := range m.Entries {
@@ -810,7 +731,7 @@ func getAllNodesFromPath(path string) []*NodeInfo {
 				if node != nil {
 					nodeInfo = &NodeInfo{node, mod, nil}
 					nodes = append(nodes, nodeInfo)
-					//fmt.Println("node added: ", (*node).NName())
+					//debuglog("node added: ", (*node).NName())
 					break
 				}
 			}
@@ -844,7 +765,7 @@ func getMatchedNode(node yang.Node, m *yang.Module, prefix, entry string) (*yang
 		}
 		return getMatchedNodeInside(g, m, prefix, entry)
 	}
-	//fmt.Println("1 ", node.Kind(), node.NName())
+	//debuglog("1 ", node.Kind(), node.NName())
 	return nil, nil
 }
 
@@ -890,7 +811,7 @@ func getMatchedNodeInside(c *yang.Container, m *yang.Module, prefix, entry strin
 			if !ok {
 				panic("Not a Uses")
 			}
-			//fmt.Println("***", u.Name)
+			//debuglog("***", u.Name)
 			if entry == u.Name {
 				g, ok := groupingMap[prefix+":"+entry]
 				if !ok {
@@ -919,7 +840,7 @@ func getMatchedNodeInside(c *yang.Container, m *yang.Module, prefix, entry strin
 				return &e, m
 			}
 		}
-		//fmt.Println("2 ", e.Kind(), e.NName())
+		//debuglog("2 ", e.Kind(), e.NName())
 	}
 
 	return nil, nil
@@ -959,7 +880,7 @@ func CheckNodePresentInAugment(n yang.Node, c yang.Container, prefix string) boo
 				}
 			}
 		default:
-			fmt.Println("ERROR: Augment case not supported yet:", nodeStringFull(aug))
+			debuglog("ERROR: Augment case not supported yet:", nodeContextStr(aug))
 		}
 	}
 	return false
@@ -1024,7 +945,7 @@ func updateNodesTreeFromPath(path string, structName string, elem *Element) {
 		if node != nil {
 			parentNodeInfo := nodeInfo
 			parentVarName := varName
-			//fmt.Println("node check: ", (*node).NName(), entry)
+			//debuglog("node check: ", (*node).NName(), entry)
 			node, mod, varType, varName, kind = findMatchedNode(*node, mod, prefix, entry)
 			if node == nil {
 				log.Fatalf("1. Did not find any node in yang for %s:%s", prefix, entry)
@@ -1038,7 +959,7 @@ func updateNodesTreeFromPath(path string, structName string, elem *Element) {
 				structName, elem, parentNodeInfo, []interface{}{}}
 			parentNodeInfo.children = append(parentNodeInfo.children, nodeInfo)
 			Nodes[key] = nodeInfo
-			//fmt.Println("node added: ", (*node).NName())
+			//debuglog("node added: ", (*node).NName())
 		} else {
 			// If node is nil that means it is the 1st node. Try to find it from grouping.
 			for _, e := range m.Entries {
@@ -1046,7 +967,7 @@ func updateNodesTreeFromPath(path string, structName string, elem *Element) {
 				if node != nil {
 					nodeInfo = &NodeData{node, mod, varType, varName, kind,
 						structName, elem, nil, []interface{}{}}
-					//fmt.Println("node added: ", (*node).NName())
+					//debuglog("node added: ", (*node).NName())
 					// This is a root nodeInfo
 					RootNodes = append(RootNodes, nodeInfo)
 					Nodes[key] = nodeInfo
@@ -1086,7 +1007,7 @@ func findMatchedNode(node yang.Node, m *yang.Module, prefix, entry string) (*yan
 		// For now the support is upto union only.
 		return findMatchedNodeForTypedef(prefix, entry)
 	}
-	//fmt.Println("1 ", node.Kind(), node.NName())
+	//debuglog("1 ", node.Kind(), node.NName())
 	return nil, nil, "", "", ""
 }
 
@@ -1113,7 +1034,7 @@ func findMatchedNodeInside(c yang.Container, m *yang.Module, prefix, entry strin
 	entries := c.GetEntries()
 	for _, e := range entries {
 		fn := e.NName()
-		//fmt.Println("1 ", e.Kind(), e.NName())
+		//debuglog("1 ", e.Kind(), e.NName())
 		switch e.Kind() {
 		case "container":
 			c, ok := e.(*yang.Container)
@@ -1141,7 +1062,7 @@ func findMatchedNodeInside(c yang.Container, m *yang.Module, prefix, entry strin
 			if !ok {
 				panic("Not a Uses")
 			}
-			//fmt.Println("***", u.Name)
+			//debuglog("***", u.Name)
 			if entry == u.Name {
 				g, ok := groupingMap[prefix+":"+u.Name]
 				if !ok {

@@ -16,9 +16,9 @@ func getType(m *yang.Module, t *yang.Type) string {
 	p := t.ParentNode()
 	switch t.Name {
 	case "leafref":
-		ref := getLeaf(t.Path.Name, m, p)
+		ref := getLeafref(t.Path.Name, m, p)
 		if ref == nil {
-			fmt.Println("ERROR: Couldn't locate the leafref for module", m.Name, "type", t.Name, "path", t.Path.Name)
+			errorlog("Couldn't locate the leafref for module %s, type %s, path %s", m.Name, t.Name, t.Path.Name)
 			return ""
 		}
 		return ref.Type.Name
@@ -59,9 +59,9 @@ func getTypeName(m *yang.Module, t *yang.Type) string {
 			}
 		}
 	case "leafref":
-		ref := getLeaf(t.Path.Name, m, p)
+		ref := getLeafref(t.Path.Name, m, p)
 		if ref == nil {
-			fmt.Println("ERROR: Couldn't locate the leafref for module", m.Name, "type", t.Name, "path", t.Path.Name)
+			errorlog("Couldn't locate the leafref for module %s, type %s, path %s", m.Name, t.Name, t.Path.Name)
 			return ""
 		}
 		return getTypeName(getMyYangModule(ref), ref.Type)
@@ -632,7 +632,7 @@ func processLeafref(w io.Writer, m *yang.Module, t *yang.Type) {
 		return
 	}
 	path := t.Path.Name
-	l := getLeaf(path, m, p)
+	l := getLeafref(path, m, p)
 	if l == nil {
 		panic("leaf not found: " + path)
 	}

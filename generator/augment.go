@@ -72,7 +72,7 @@ func processAugments(w io.Writer, mod *Module, ymod *yang.Module, n yang.Node) {
 	}
 
 	for _, c := range a.Container {
-		processContainer(w, ymod, yang.Node(c), false)
+		genTypeForContainer(w, ymod, yang.Node(c), false)
 	}
 	/*
 		addAugmentComment(w, a)

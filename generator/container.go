@@ -21,7 +21,7 @@ func addContainerComment(w io.Writer, c *yang.Container) {
 	fmt.Fprintln(w, "//-------------------------------------------------------------")
 }
 
-func processContainer(w io.Writer, ymod *yang.Module, n yang.Node, keepXmlID bool) {
+func genTypeForContainer(w io.Writer, ymod *yang.Module, n yang.Node, keepXmlID bool) {
 	var addNs bool = false
 	c, ok := n.(*yang.Container)
 	if !ok {
@@ -29,9 +29,9 @@ func processContainer(w io.Writer, ymod *yang.Module, n yang.Node, keepXmlID boo
 	}
 
 	addContainerComment(w, c)
-	name := c.NName()
+	name := getFullName(c)
 	if strings.Contains(c.NName(), "/") {
-		// This container is inside augment. Use NName instead.
+		// TODO: This container is inside augment. Use NName instead.
 		name = c.NName()
 	}
 	fmt.Fprintf(w, "type %s_cont struct {\n", genTN(ymod, name))
@@ -39,7 +39,21 @@ func processContainer(w io.Writer, ymod *yang.Module, n yang.Node, keepXmlID boo
 		mod := getMyModule(ymod)
 		fmt.Fprintf(w, "\tXMLName nc.XmlId `xml:\"%s %s\"`\n", mod.namespace, c.Name)
 	}
-	generateFields(w, ymod, c, addNs)
+	for _, c1 := range c.Container {
+		generateField(w, ymod, c1, addNs)
+	}
+	for _, l1 := range c.Leaf {
+		generateField(w, ymod, l1, addNs)
+	}
+	for _, g1 := range c.Grouping {
+		generateField(w, ymod, g1, addNs)
+	}
+	for _, l1 := range c.List {
+		generateField(w, ymod, l1, addNs)
+	}
+	for _, u1 := range c.Uses {
+		generateField(w, ymod, u1, addNs)
+	}
 	fmt.Fprintf(w, "}\n")
 
 	// Generate runtime namespace function
@@ -48,7 +62,15 @@ func processContainer(w io.Writer, ymod *yang.Module, n yang.Node, keepXmlID boo
 
 	// The code below triggers the code generation for the
 	// constituents of the grouping
-	generateTypes(w, ymod, c, false)
+	for _, c1 := range c.Container {
+		generateTypes(w, ymod, c1, false)
+	}
+	for _, l1 := range c.Leaf {
+		generateTypes(w, ymod, l1, false)
+	}
+	for _, l1 := range c.List {
+		generateTypes(w, ymod, l1, false)
+	}
 }
 
 func generateContainerRuntimeNs(w io.Writer, mod *Module, ymod *yang.Module, name string) {
@@ -56,3 +78,52 @@ func generateContainerRuntimeNs(w io.Writer, mod *Module, ymod *yang.Module, nam
 	fmt.Fprintf(w, "\treturn %s_ns\n", genFN(mod.name))
 	fmt.Fprintf(w, "}\n")
 }
+
+func getNodeFromContainer(mod *Module, c *yang.Container, name string, leaf bool) yang.Node {
+	for _, c1 := range c.Container {
+		if c1.NName() == name {
+			return c1
+		}
+	}
+	for _, l1 := range c.Leaf {
+		if l1.NName() == name {
+			return l1
+		}
+	}
+	for _, l1 := range c.List {
+		if l1.NName() == name {
+			return l1
+		}
+	}
+	for _, u1 := range c.Uses {
+		if node := getNodeFromUses(mod, u1, name); node != nil {
+			return node
+		}
+	}
+	return nil
+}
+
+func getNodeWithUsesFromContainer(c *yang.Container, name string) yang.Node {
+	for _, u1 := range c.Uses {
+		if u1.NName() == name {
+			return c
+		}
+	}
+	for _, g1 := range c.Grouping {
+		if n := getNodeWithUsesFromGrouping(g1, name); n != nil {
+			return n
+		}
+	}
+	for _, c1 := range c.Container {
+		if n := getNodeWithUsesFromContainer(c1, name); n != nil {
+			return n
+		}
+	}
+	for _, l1 := range c.List {
+		if n := getNodeWithUsesFromList(l1, name); n != nil {
+			return n
+		}
+	}
+	return nil
+}
+

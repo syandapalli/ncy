@@ -76,6 +76,16 @@ func NewModule(m *yang.Module) *Module {
 	return mod
 }
 
+func printModule(m *Module) {
+	fmt.Println("Module:", m.name)
+	indent := 0
+	for _, sm := range m.submodules {
+		mod := sm.module	
+		printYangModule(mod, indent + 1)
+	}
+}
+
+
 // Maps of modules by the prefixes given by the modules instead of
 // prefixes used by different modules for importing. This is a global
 // list
@@ -106,12 +116,12 @@ func (m *Module) getBaseIdentity(name string) *yang.Identity {
 func addModule(mod *yang.Module) {
 	m := NewModule(mod)
 	if tm, ok := modulesByName[m.name]; ok {
-		fmt.Println("Module by name already exists:" + tm.name)
+		errorlog("Module by name already exists: %s", tm.name)
 		return
 	}
 	modulesByName[m.name] = m
 	if tm, ok := modulesByPrefix[m.prefix]; ok {
-		fmt.Println("Module by prefix already exists:" + tm.prefix)
+		errorlog("Module by prefix already exists: %s", tm.prefix)
 		return
 	}
 	modulesByPrefix[m.prefix] = m
@@ -163,7 +173,7 @@ func getModuleByPrefix(pre string) *Module {
 // especially for generating the namespace related text into the type
 // definitions
 func (m *Module) preprocessModule() {
-	fmt.Println("Preprocessing module:", m.name)
+	debuglog("Preprocessing module: %s", m.name)
 	m.preprocessIdentities()
 	m.preprocessAugments()
 }
@@ -255,14 +265,16 @@ func processSubModule(mod *Module, submod *SubModule, outdir string) {
 	m := submod.module
 	inpath := m.Source.Location()
 	_, file := path.Split(inpath)
-	outpath := outdir + "/yang-go/" + file
+	mainname := strings.Split(file, ".yang")
+	outpath := outdir + "/yang-go/" + mainname[0] + ".go"
+
 	// If outpath is not present then create it.
 	ensureDirectory(outpath)
-	outpath = strings.ReplaceAll(outpath, ".yang", ".go")
-	fmt.Println("Processing file", file, "...")
+
+	debuglog("Processing file %s%s", mainname[0], "...")
 	w, err := os.OpenFile(outpath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
-		fmt.Println("ERROR: ", err.Error())
+		errorlog("unable to open file %s", err.Error())
 	}
 
 	groupingNames := map[string]struct{}{}
@@ -278,10 +290,12 @@ func processSubModule(mod *Module, submod *SubModule, outdir string) {
 
 	//entries := mergeAugmentsWithSamePath(submod.module.Entries)
 	// process the entries of the module
-
-	//for _, e := range submod.module.Entries {
-	//	processEntry(w, mod, m, e, keepXmlID)
-	//}
+	for _, i := range submod.module.Identity {
+		processIdentity(w, mod, m, i)
+	}
+	for _, g := range submod.module.Grouping {
+		processGrouping(w, mod, m, g, keepXmlID)
+	}
 
 	// generate the init() function
 	fmt.Fprintf(w, "func init() {\n")
@@ -343,18 +357,23 @@ func mergeAugmentsWithSamePath(entries []yang.Node) []yang.Node {
 	return newEntries
 }
 
-// Processes as individual entry of a module. This is
-// responsible for generating all the code needed for any
-// entry within the module
-func processEntry(w io.Writer, mod *Module, m *yang.Module, n yang.Node, keepXmlID bool) {
-	switch n.Kind() {
-	case "grouping":
-		processGrouping(w, mod, m, n, keepXmlID)
-	case "typedef":
-		processTypedef(w, mod, m, n)
-	case "identity":
-		processIdentity(w, mod, m, n)
-	case "augment":
-		processAugments(w, mod, m, n)
+// One of the utility functions that help traversal across the YANG specification
+func getGroupingFromMod(mod *Module, name string) *yang.Grouping {
+	prefix := getPrefix(name)
+	gname := getName(name)
+	if prefix != "" {
+		mod = getModuleByPrefix(prefix)
 	}
+	if mod == nil {
+		return nil
+	}
+	for _, sm := range mod.submodules {
+		ymod := sm.module
+		for _, g := range ymod.Grouping {
+			if g.NName() == gname {
+				return g
+			}
+		}
+	}
+	return nil
 }
