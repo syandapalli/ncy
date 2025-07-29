@@ -24,9 +24,8 @@ func (mod *Module) preprocessAugment(aug *yang.Augment) {
 			panic("preprocessAugment() - Node located isn't a container: " + nodeString(node))
 		}
 		*/
-		fmt.Println("Hit this case that was commented out")
 	} else {
-		fmt.Println("ERROR: Augment couldn't be located")
+		errorlog("ERROR: Augment %s couldn't be located", aug.NName())
 	}
 }
 

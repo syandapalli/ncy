@@ -18,7 +18,7 @@ func genTypeForList(w io.Writer, m *yang.Module, n yang.Node) {
 	// We are all good. Let's generate the first type
 	// that represents the list which has fields which
 	// are also generated within
-	ln := getFullName(l)
+	ln := fullName(l)
 	fmt.Fprintf(w, "type %s struct {\n", genTN(m, ln))
 	for _, l1 := range l.Leaf {
 		generateField(w, m, l1, addNs)

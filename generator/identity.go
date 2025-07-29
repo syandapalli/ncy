@@ -152,7 +152,7 @@ func checkIdentity(m *yang.Module, id *yang.Identity) *yang.Identity {
 }
 
 // This function generates all the code needed for each identity
-func processIdentity(w io.Writer, mod *Module, ymod *yang.Module, n yang.Node) {
+func processIdentity(w io.Writer, submod *SubModule, ymod *yang.Module, n yang.Node) {
 	id, ok := n.(*yang.Identity)
 	if !ok {
 		panic("Not of type Identity")
@@ -187,9 +187,8 @@ func generateMapEntries(ymod *yang.Module, id *yang.Identity) {
 	}
 }
 func addMapEntry(m *yang.Module, id *yang.Identity, mbase *yang.Module, base *yang.Identity, namespace string, prefix string) {
-	mod := getMyModule(base)
 	submod := getSubModule(m.Name)
-	if mod != nil {
+	if submod != nil {
 		s := fmt.Sprintf("%s_prefix_map[\"%s\"] = \"%s\"\n", genTN(mbase, base.Name), id.Name, prefix)
 		submod.initfunc = append(submod.initfunc, s)
 		s = fmt.Sprintf("%s_ns_map[\"%s\"] = \"%s\"\n", genTN(mbase, base.Name), id.Name, namespace)

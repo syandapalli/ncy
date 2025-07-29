@@ -20,19 +20,19 @@ func addComment(w io.Writer, t *yang.Typedef) {
 	fmt.Fprintln(w, "//-------------------------------------------------------------")
 }
 
-func processTypedef(w io.Writer, mod *Module, ymod *yang.Module, n yang.Node) {
+func processTypedef(w io.Writer, submod *SubModule, ymod *yang.Module, n yang.Node) {
 	t, ok := n.(*yang.Typedef)
 	if !ok {
 		panic("Not a typedef")
 	}
 	addComment(w, t)
 	processType(w, ymod, t.Type)
-	generateTypedefRuntimeNs(w, mod, ymod, t)
+	generateTypedefRuntimeNs(w, submod, ymod, t)
 	fmt.Fprintf(w, "\n")
 }
 
-func generateTypedefRuntimeNs(w io.Writer, mod *Module, ymod *yang.Module, t *yang.Typedef) {
+func generateTypedefRuntimeNs(w io.Writer, submod *SubModule, ymod *yang.Module, t *yang.Typedef) {
 	fmt.Fprintf(w, "func (x %s) RuntimeNs() string {\n", genTN(ymod, t.NName()))
-	fmt.Fprintf(w, "\treturn %s_ns\n", genFN(mod.name))
+	fmt.Fprintf(w, "\treturn %s_ns\n", genFN(submod.name))
 	fmt.Fprintf(w, "}\n")
 }

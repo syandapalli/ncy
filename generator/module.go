@@ -28,6 +28,7 @@ const (
 
 type SubModule struct {
 	name      string
+	mod       *Module
 	module    *yang.Module
 	mtype     ModuleType
 	namespace string
@@ -68,6 +69,7 @@ func NewModule(m *yang.Module) *Module {
 	// Add the module also as a submodule which is used
 	// for any processing related to generation of code
 	submod := &SubModule{}
+	submod.mod = mod
 	submod.mtype = TypeModule
 	submod.module = m
 	submod.name = m.Name
@@ -137,6 +139,7 @@ func addSubModule(m *yang.Module) {
 	modname := m.BelongsTo.Name
 	if mod, ok := modulesByName[modname]; ok {
 		mod.submodules[lm.name] = lm
+		lm.mod = mod
 		lm.prefix = mod.prefix
 		lm.namespace = mod.namespace
 		submodToMod[lm.name] = mod.name
@@ -251,6 +254,7 @@ func addFileComments(w io.Writer, ymod *yang.Module) {
 // Process the main module and its submodules
 func processModule(mod *Module, outdir string) {
 	for _, sm := range mod.submodules {
+		fmt.Println("***********Processing module", sm.module.NName(), "...")
 		processSubModule(mod, sm, outdir)
 		storeInPrefixModuleMap(sm.module)
 	}
@@ -291,10 +295,13 @@ func processSubModule(mod *Module, submod *SubModule, outdir string) {
 	//entries := mergeAugmentsWithSamePath(submod.module.Entries)
 	// process the entries of the module
 	for _, i := range submod.module.Identity {
-		processIdentity(w, mod, m, i)
+		processIdentity(w, submod, m, i)
 	}
 	for _, g := range submod.module.Grouping {
-		processGrouping(w, mod, m, g, keepXmlID)
+		processGrouping(w, submod, m, g, keepXmlID)
+	}
+	for _, t := range submod.module.Typedef {
+		processTypedef(w, submod, m, t)
 	}
 
 	// generate the init() function

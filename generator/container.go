@@ -29,7 +29,7 @@ func genTypeForContainer(w io.Writer, ymod *yang.Module, n yang.Node, keepXmlID 
 	}
 
 	addContainerComment(w, c)
-	name := getFullName(c)
+	name := fullName(c)
 	if strings.Contains(c.NName(), "/") {
 		// TODO: This container is inside augment. Use NName instead.
 		name = c.NName()

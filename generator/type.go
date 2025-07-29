@@ -634,7 +634,8 @@ func processLeafref(w io.Writer, m *yang.Module, t *yang.Type) {
 	path := t.Path.Name
 	l := getLeafref(path, m, p)
 	if l == nil {
-		panic("leaf not found: " + path)
+		errorlog("leaf for referrence %s is not found", path)
+		return
 	}
 	fmt.Fprintf(w, "type %s %s\n", genTN(m, p.NName()), getTypeName(m, l.Type))
 }

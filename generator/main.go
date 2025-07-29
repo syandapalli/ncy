@@ -58,6 +58,10 @@ func main() {
 		log.Fatalf("-o: output directory must be present")
 	}
 
+	// We recursively go through the directory for all the yang files which will
+	// be included in the generated. We look for files named ".yang". We parse
+	// those files and the output of parsing is stored in structure Modules defined
+	// in package "yang".
 	files := readDir(indir, "yang")
 	debuglog("Number files = %d", len(files))
 	ms := yang.NewModules()
@@ -67,14 +71,32 @@ func main() {
 			errorlog("Cannot open file: %s", err.Error())
 		}
 	}
+	// Add all the modules parsed
 	addModules(ms)
-	//printModules()
+
+	// We have two steps in the overall processing of the modules which will
+	// translate the modules to code. The first step is preprocess which attempts
+	// to process some identities (mostly augments) that are to be used during
+	// generation.
 	for _, m := range modulesByName {
 		m.preprocessModule()
 	}
+
+	// This generates the structure that describes the device based on yang
+	// files included in the generation.
+	generateMain(outdir)
+
+
+	// Now generate code for each module. We generate a .go file for each
+	// yang module
+	/*
 	for _, m := range modulesByName {
 		processModule(m, outdir)
 	}
+	*/
+	m := modulesByName["openconfig-optical-amplifier"]
+	processModule(m, outdir)
+
 
 	/*
         if apiIndir != "" {

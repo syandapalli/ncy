@@ -13,8 +13,11 @@ import (
 	"strings"
 )
 
-var debugenabled bool = false
 
+// ****************************************************************
+// Utilities for managing the debugging. It is possible to turn the
+// debug on/off but the error logs are always emitted
+var debugenabled bool = true
 func debuglog(format string, args ...interface{}) {
 	if debugenabled {
 		fmt.Printf("DEBUG: " + format + "\n", args...)
@@ -24,26 +27,20 @@ func errorlog(format string, args ...interface{}) {
 	fmt.Printf("ERROR: " + format + "\n", args...)
 }
 
+// A set of maps that are used to store and retrieve effieciently
+// the modules and submodules.
 var prefixModulesMap = map[string][]*yang.Module{}
 var prefixModuleMap = map[string]*yang.Module{}
 var groupingMap = map[string]yang.Node{}
 
-func getEntries(c *yang.Container) []yang.Node {
-	e := make([]yang.Node, 0, 1000)
-	for _, l := range c.Leaf {
-		e = append(e, l)
-	}
-	return e
-}
 
+// ***********************************************************
+// Set of print functions that are useful when debugging
 func printIndent(indent int) {
 	for indent > 0 {
 		fmt.Print("\t")
 		indent = indent -1
 	}
-}
-
-func fullName(n yang.Node) {
 }
 
 func printNode(n yang.Node, indent int) {
@@ -139,6 +136,8 @@ func nodeContextStr(node yang.Node) string {
 	return node.Kind() + ":" + node.NName() + "@ module:" + mname
 }
 
+// This function adds indentation to the text. Essentially adds a tab
+// at the beginning of each new line
 func indentString(c string) string {
 	s := strings.ReplaceAll(c, "\n", "\n    ")
 	s = "    " + s
@@ -179,9 +178,9 @@ func getModulePrefix(m *yang.Module) string {
 }
 
 // 
-func getFullName(n yang.Node) string {
+func fullName(n yang.Node) string {
 	fn := n.NName()
-	for n.ParentNode().Kind() != "module" {
+	for n.ParentNode() != nil && n.ParentNode().Kind() != "module" {
 		n = n.ParentNode()
 		fn = n.NName() + "_" + fn
 	}
@@ -418,20 +417,21 @@ func getFromUsesNode(n yang.Node, name string, needleaf bool) (*Module, yang.Nod
 // If the current node includes a uses, it must traverse the
 // entries within the type pointed by uses. Thus, the traversal
 // can be recursive.
-func getNodeByName(mod *Module, curr yang.Node, name string, leaf bool) (*Module, yang.Node) {
+func getNodeByName(ctx *traverseContext, curr yang.Node, name string, leaf bool) (*Module, yang.Node) {
 	if curr == nil {
-		node := getNodeFromMod(mod, name)
-		return mod, node
+		node := getNodeFromMod(ctx.curmod, name)
+		return ctx.curmod, node
 	}
+	debuglog("getNodeByName():Finding %s curr=%s mod=%s", name, curr.NName(), ctx.curmod.name)
 	switch curr.Kind() {
 	case "grouping":
-		return mod, getNodeFromGrouping(mod, curr, name, false)
+		return ctx.curmod, getNodeFromGrouping(ctx.curmod, curr, name, false)
 	case "container":
-		return mod, getNodeFromContainer(mod, curr.(*yang.Container), name, false)
+		return ctx.curmod, getNodeFromContainer(ctx.curmod, curr.(*yang.Container), name, false)
 	case "list":
-		return mod, getNodeFromList(mod, curr.(*yang.List), name, false)
+		return ctx.curmod, getNodeFromList(ctx.curmod, curr.(*yang.List), name, false)
 	}
-	return mod, nil
+	return ctx.curmod, nil
 }
 
 func getNodeFromMod(mod *Module, name string) yang.Node {
@@ -449,6 +449,7 @@ func getNodeFromMod(mod *Module, name string) yang.Node {
 			}
 		}
 	}
+	errorlog("Failed to get %s from module %s", name, mod.name)
 	return nil
 }
 
@@ -460,7 +461,7 @@ func getNodeFromUses(mod *Module, u *yang.Uses, name string) yang.Node {
 	prefix := getPrefix(u.NName())
 	uname := getName(u.NName())
 	if prefix != "" {
-		mod := getModuleByPrefix(prefix)
+		mod = getModuleByPrefix(prefix)
 		if mod == nil {
 			return nil
 		}
@@ -473,9 +474,9 @@ func getNodeFromUses(mod *Module, u *yang.Uses, name string) yang.Node {
 }
 
 // Locate the node from the entire set of modules from the uses.
-func getNodeWithUsesGlobal(modname string, name string) (*Module, yang.Node) {
+func getNodeWithUsesGlobal(ctx *traverseContext, name string) (*Module, yang.Node) {
 	for _, mod := range modulesByName {
-		node := getNodeWithUsesFromMod(mod, modname, name)
+		node := getNodeWithUsesFromMod(mod, name)
 		if node != nil {
 			return mod, node
 		}
@@ -486,7 +487,7 @@ func getNodeWithUsesGlobal(modname string, name string) (*Module, yang.Node) {
 // Locate the node that includes the uses with the name. The search
 // is recursive. This node could be included in any submodule or module
 // associated with the submodule.
-func getNodeWithUsesFromMod(mod *Module, modname string, name string) yang.Node {
+func getNodeWithUsesFromMod(mod *Module, name string) yang.Node {
 	for _, sm := range mod.submodules {
 		for _, g := range sm.module.Grouping {
 			if node := getNodeWithUsesFromGrouping(g, name); node != nil {
@@ -550,17 +551,24 @@ func getNodeFromAugment(aug *yang.Augment, part string) yang.Node {
 // This utility performs traversal along the tree which
 // includes the set of modules processed and locates the
 // node. The path can be relative or absolute
+type traverseContext struct {
+	srcmod               *Module
+	srcymod              *yang.Module
+	curmod               *Module
+}
+
 func traverse(path string, node yang.Node, needleaf bool) yang.Node {
 	var root bool = false
 	var mod, nmod *Module
 	var accPath string
 	var curr, next yang.Node
 
+	ctx := &traverseContext{}
+
 	// Complete some initialization
-	mod = getMyModule(node)
-	ymod := getMyYangModule(node)
-	curr = node
-	next = node
+	ctx.srcmod  = getMyModule(node)
+	ctx.srcymod = getMyYangModule(node)
+	ctx.curmod  = ctx.srcmod
 
 	// yang supports quite a varied set of capabilities and we do not intend support them all.
 	// We are going to trim a known form which has text between '[' and ']'. The removal
@@ -581,11 +589,14 @@ func traverse(path string, node yang.Node, needleaf bool) yang.Node {
 
 	// If the path is a root path, the first part is an empty
 	// part and is to be trimmed
+	nmod = mod
+	curr = node
+	next = node
 	if root {
 		parts = parts[1:]
 		prefix := getPrefix(parts[0])
 		if prefix != "" {
-			mod = getImportedModuleByPrefix(ymod, prefix)
+			mod = getImportedModuleByPrefix(ctx.srcymod, prefix)
 			if mod == nil {
 				return nil
 			}
@@ -595,15 +606,18 @@ func traverse(path string, node yang.Node, needleaf bool) yang.Node {
 
 	// lets traverse starting with the node and locate based on parts
 	// collected earlier
-	nmod = mod
 	for i, part := range parts {
-		debuglog("Searching for \"%s\": iteration = %d/%d Accumulated path = %s", part, i, len(parts), accPath)
+		debuglog("Searching for \"%s\": iteration=%d/%d accpath=%s, path=%s", part, i, len(parts), accPath, path)
 		switch part {
 		case "..":
 			next = next.ParentNode()
+			if next == nil {
+				errorlog("Traversal failed for .., i=%d, path=%s", i, path)
+				return nil
+			}
 			if next.Kind() == "grouping" {
 				debuglog("Finding uses node %s in iteration = %d", next.NName(), i)
-				nmod, next = getNodeWithUsesGlobal(nmod.name, next.NName())
+				ctx.curmod, next = getNodeWithUsesGlobal(ctx, next.NName())
 				if next == nil {
 					debuglog("Failed to find node that uses %s", curr.NName())
 					break
@@ -616,25 +630,26 @@ func traverse(path string, node yang.Node, needleaf bool) yang.Node {
 			pre  := getPrefix(part)
 			name := getName(part)
 			if pre != "" {
-				ym := getMyYangModule(node)
-				nmod := getImportedModuleByPrefix(ym, pre)
-				if nmod == nil {
+				// Look for module always based on ymod as the prefix translation
+				// is based on the module where the path is written
+				nmod := getImportedModuleByPrefix(ctx.srcymod, pre)
+				if ctx.curmod == nil {
 					errorlog("traverse() - module couldn't be found for prefix = %s", pre)
 					return nil
 				}
-				if mod != nmod {
+				if ctx.curmod != nmod {
+					ctx.curmod = nmod
 					next = nil
 				}
 			}
 			// Locate the node in the current container
-			nmod, next = getNodeByName(nmod, next, name, needleaf && i == (len(parts)-1))
+			nmod, next = getNodeByName(ctx, next, name, needleaf && i == (len(parts)-1))
 		}
-		if next != nil {
-			debuglog("Found: index = %d/%d next node = %s", i, len(parts), next.NName())
-		} else {
-			errorlog("traversal failed at index=%d name=%s, accPath=%s", i, curr.NName(), accPath)
-			break
+		if next == nil {
+			errorlog("traversal failed at index=%d name=%s, path=%s, accPath=%s, curr=%s.%s", i, part, path, accPath, curr.NName(), curr.Kind())
+			return nil
 		}
+		debuglog("Found: index = %d/%d next node = %s", i, len(parts), next.NName())
 		accPath = accPath + "/" + part
 		curr = next
 		mod = nmod

@@ -24,7 +24,7 @@ func generateField(w io.Writer, ymod *yang.Module, node yang.Node, addNs bool) {
 		if !ok {
 			panic("Not a container")
 		}
-		tn := getFullName(c)
+		tn := fullName(c)
 		fmt.Fprintf(w, "\t%s_Prsnt bool `xml:\",presfield\"`\n", genFN(fieldname))
 		fmt.Fprintf(w, "\t%s %s_cont `xml:\"%s%s\"`\n", genFN(fieldname), genTN(ymod, tn), nsstr, fieldname)
 	case "leaf":
@@ -59,7 +59,7 @@ func generateField(w io.Writer, ymod *yang.Module, node yang.Node, addNs bool) {
 		if !ok {
 			panic("Not a Leaf")
 		}
-		tn := getFullName(l)
+		tn := fullName(l)
 		fmt.Fprintf(w, "\t%s []%s `xml:\"%s%s\"`\n", genFN(fieldname), genTN(ymod, tn), nsstr, fieldname)
 	case "uses":
 		u, ok := node.(*yang.Uses)
@@ -78,17 +78,17 @@ func generateField(w io.Writer, ymod *yang.Module, node yang.Node, addNs bool) {
 
 // This function goes through the list of entries that are contained within elements
 // such as grouping, container, lists, etc. and generates the needed type definitions
-func generateTypes(w io.Writer, m *yang.Module, n yang.Node, keepXmlID bool) {
-	debuglog("Generating type for %s", n.NName())
-	switch n.Kind() {
+func generateTypes(w io.Writer, ymod *yang.Module, node yang.Node, keepXmlID bool) {
+	debuglog("Generating type for %s", node.NName())
+	switch node.Kind() {
 	case "container":
-		genTypeForContainer(w, m, n, keepXmlID)
+		genTypeForContainer(w, ymod, node, keepXmlID)
 	case "list":
-		genTypeForList(w, m, n)
+		genTypeForList(w, ymod, node)
 	case "leaf":
-		genTypeForLeaf(w, m, n)
+		genTypeForLeaf(w, ymod, node)
 	case "leaf-list":
-		genTypeForLeafList(w, m, n)
+		genTypeForLeafList(w, ymod, node)
 	}
 }
 

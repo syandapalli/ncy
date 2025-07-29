@@ -61,9 +61,9 @@ func genTypeForLeafList(w io.Writer, m *yang.Module, n yang.Node) {
 // till you find a node that isn't leafref
 func getLeafref(path string, m *yang.Module, n yang.Node) *yang.Leaf {
 	// Traverse the tree to fetch the node pointed to by the leafref.
-	debuglog("Fetching leaf with reference path = %s, leaf = %s", path, n.NName())
 	node := traverse(path, n, true)
 	if node == nil {
+		errorlog("Failed to fine leaf with reference path = %s, leaf = %s", path, n.NName())
 		return nil
 	}
 	l, ok := node.(*yang.Leaf)
@@ -76,11 +76,7 @@ func getLeafref(path string, m *yang.Module, n yang.Node) *yang.Leaf {
 	// so on. This lower portion addresses recursive traversal to locate the
 	// final leaf of interest
 	if l.Type.Name == "leafref" {
-		//debuglog("Found leafref path = %s", l.Type.Path.Name)
-		mod := getMyModule(l)
-		if mod == nil {
-			errorlog("leaf: Module not found for %s and leaf = %s", path, l.Name)
-		}
+		debuglog("Found leafref with path=%s for path=%s", l.Type.Path.Name, path)
 		return getLeafref(l.Type.Path.Name, m, l)
 	}
 	return l
