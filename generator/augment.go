@@ -7,6 +7,66 @@ import (
 	"github.com/openconfig/goyang/pkg/yang"
 )
 
+func addAugmentToContainer(a *yang.Augment, n yang.Node) {
+	debuglog("addAugmentsToContainer(): adding %s to %s.%s", a.NName(), n.NName(), n.Kind())
+	c, ok := n.(*yang.Container)
+	if !ok {
+		errorlog("addAugmentToContainer(): %s.%s is not a container", n.NName(), n.Kind())
+	}
+	for _, c1 := range a.Container {
+		c.Container = append(c.Container, c1)
+	}
+	for _, l1 := range a.Leaf {
+		c.Leaf = append(c.Leaf, l1)
+	}
+	for _, u1 := range a.Uses {
+		g := getGroupingByName(u1)
+		if g == nil {
+			errorlog("addAugmentToContainer(): couldn't locate grouping %s", u1.NName())
+			continue
+		}
+		for _, c1 := range g.Container {
+			c.Container = append(c.Container, c1)
+		}
+		for _, l1 := range g.List {
+			c.List = append(c.List, l1)
+		}
+		for _, l1 := range g.Leaf {
+			c.Leaf = append(c.Leaf, l1)
+		}
+	}
+}
+
+func addAugmentToList(a *yang.Augment, n yang.Node) {
+	debuglog("addAugmentToList(): adding %s to %s.%s", a.NName(), n.NName(), n.Kind())
+	l, ok := n.(*yang.List)
+	if !ok {
+		errorlog("addAugmentToList(): %s.%s is not a list", n.NName(), n.Kind())
+	}
+	for _, c1 := range a.Container {
+		l.Container = append(l.Container, c1)
+	}
+	for _, l1 := range a.Leaf {
+		l.Leaf = append(l.Leaf, l1)
+	}
+	for _, u1 := range a.Uses {
+		g := getGroupingByName(u1)
+		if g == nil {
+			errorlog("addAugmentToList(): couldn't locate grouping %s", u1.NName())
+			continue
+		}
+		for _, c1 := range g.Container {
+			l.Container = append(l.Container, c1)
+		}
+		for _, l1 := range g.List {
+			l.List = append(l.List, l1)
+		}
+		for _, l1 := range g.Leaf {
+			l.Leaf = append(l.Leaf, l1)
+		}
+	}
+}
+
 func (mod *Module) preprocessAugment(aug *yang.Augment) {
 	debuglog("preprocessAugment(): name=%s in module %s", aug.Name, mod.name)
 	// Let's locate the position of the augment within the other module
@@ -16,7 +76,9 @@ func (mod *Module) preprocessAugment(aug *yang.Augment) {
 		debuglog("preprocessAUgment(): found %s.%s for augment %s", node.NName(), node.Kind(), aug.NName())
 		switch node.Kind() {
 		case "container":
+			addAugmentToContainer(aug, node)
 		case "list":
+			addAugmentToList(aug, node)
 		default:
 			errorlog("preprocessAugment(): addition to %s.%s not supported", node.NName(), node.Kind())
 		}

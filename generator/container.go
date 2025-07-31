@@ -79,7 +79,9 @@ func generateContainerRuntimeNs(w io.Writer, mod *Module, ymod *yang.Module, nam
 	fmt.Fprintf(w, "}\n")
 }
 
-func getNodeFromContainer(c *yang.Container, name string, leaf bool) yang.Node {
+func getNodeFromContainer(c *yang.Container, fname string, leaf bool) yang.Node {
+	debuglog("getNodeFromContainer(): looking for %s in %s", fname, c.NName())
+	name := getName(fname)
 	for _, c1 := range c.Container {
 		if c1.NName() == name {
 			return c1

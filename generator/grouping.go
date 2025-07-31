@@ -157,18 +157,17 @@ func getMatchingUsesNodeFromGrouping(g *yang.Grouping, name string) yang.Node {
 
 // One of the utility functions that help traversal across the YANG specification
 func getGroupingByName(u *yang.Uses) *yang.Grouping {
-	var ymod1 *yang.Module
 	prefix := getPrefix(u.NName())
 	gname := getName(u.NName())
 	ymod := getMyYangModule(u)
 	if prefix != "" {
-		ymod1 = getImportedYangModuleByPrefix(ymod, prefix)
+		ymod = getImportedYangModuleByPrefix(ymod, prefix)
 	}
-	if ymod1 == nil {
+	if ymod == nil {
 		errorlog("getGroupingByName(): module not found for prefix=%s, mod=%s", prefix, ymod.NName())
 		return nil
 	}
-	for _, g := range ymod1.Grouping {
+	for _, g := range ymod.Grouping {
 		if g.NName() == gname {
 			return g
 		}

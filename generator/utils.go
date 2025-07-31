@@ -18,7 +18,8 @@ import (
 // Utilities for managing the debugging. It is possible to turn the
 // debug on/off but the error logs are always emitted
 //var debugenabled bool = true
-var debugenabled bool = false
+//var debugenabled bool = true
+var debugenabled bool = true
 func debuglog(format string, args ...interface{}) {
 	if debugenabled {
 		fmt.Printf("DEBUG: " + format + "\n", args...)
@@ -448,9 +449,9 @@ func getFromUsesNode(n yang.Node, name string, needleaf bool) (*Module, yang.Nod
 // If the current node includes a uses, it must traverse the
 // entries within the type pointed by uses. Thus, the traversal
 // can be recursive.
-func getNodeByName(node yang.Node, name string, leaf bool) yang.Node {
+func getNextNodeByName(node yang.Node, name string, leaf bool) yang.Node {
 	mod := getMyModule(node)
-	debuglog("getNodeByName():Finding %s curr=%s.%s", name, node.NName(), node.Kind())
+	debuglog("getNextNodeByName():Finding %s curr=%s.%s", name, node.NName(), node.Kind())
 	switch node.Kind() {
 	case "grouping":
 		return getNodeFromGrouping(node, name, false)
@@ -461,7 +462,7 @@ func getNodeByName(node yang.Node, name string, leaf bool) yang.Node {
 	case "module":
 		return getNodeFromMod(mod, name)
 	}
-	errorlog("getNodeByName(): %s.%s isn't a container type node", node.NName(), node.Kind())
+	errorlog("getNextNodeByName(): %s.%s isn't a container type node", node.NName(), node.Kind())
 	return nil
 }
 
@@ -679,7 +680,7 @@ func traverse(path string, node yang.Node, needleaf bool) yang.Node {
 			// From the "part", identify the module and name to search for.
 			// The module is derived from the prefix in the "part".
 			name := getName(part)
-			next = getNodeByName(next, name, needleaf && i == (len(parts)-1))
+			next = getNextNodeByName(next, name, needleaf && i == (len(parts)-1))
 		}
 		// If we couldn't find the next node, we cannot continue further in the traversal
 		// Let's return out of the function with failure

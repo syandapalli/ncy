@@ -54,7 +54,9 @@ func genTypeForList(w io.Writer, m *yang.Module, n yang.Node) {
 // the fields, match the field name to the passed name and return if it matches.
 // It is different for any field that has 'uses' syntax. For such, we iterate through
 // the fields of the uses structure and identify the match.
-func getNodeFromList(l *yang.List, name string, leaf bool) yang.Node {
+func getNodeFromList(l *yang.List, fname string, leaf bool) yang.Node {
+	debuglog("getNodeFromList(): looking for %s in %s", fname, l.NName())
+	name := getName(fname)
 	for _, c1 := range l.Container {
 		if c1.NName() == name {
 			return c1
