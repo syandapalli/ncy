@@ -17,12 +17,12 @@ func generateField(w io.Writer, ymod *yang.Module, node yang.Node, addNs bool) {
 		nsstr = mod.namespace + " "
 	}
 	fieldname := node.NName()
-	debuglog("Generating for field %s", fieldname)
+	debuglog("generateField(): Generating for field %s.%s", node.NName(), node.Kind())
 	switch node.Kind() {
 	case "container":
 		c, ok := node.(*yang.Container)
 		if !ok {
-			panic("Not a container")
+			errorlog("generateField(): %s.%s not a container", node.NName(), node.Kind())
 		}
 		tn := fullName(c)
 		fmt.Fprintf(w, "\t%s_Prsnt bool `xml:\",presfield\"`\n", genFN(fieldname))
@@ -30,12 +30,12 @@ func generateField(w io.Writer, ymod *yang.Module, node yang.Node, addNs bool) {
 	case "leaf":
 		l, ok := node.(*yang.Leaf)
 		if !ok {
-			panic("Not a leaf")
+			errorlog("generateField(): %s.%s not a leaf", node.NName(), node.Kind())
 		}
 		tn := getTypeName(ymod, l.Type)
-		pre := getPrefix(getType(ymod, l.Type))
+		pre := getPrefix(tn)
 		if getImportedModuleByPrefix(ymod, pre) == nil {
-			errorlog("Exiting from leaf field: pre=%s", pre)
+			errorlog("generateField(): Exiting from leaf field: pre=%s, leaf=%s.%s", pre, node.NName(), node.Kind())
 			break
 		}
 		fmt.Fprintf(w, "\t%s_Prsnt bool `xml:\",presfield\"`\n", genFN(fieldname))
@@ -45,7 +45,7 @@ func generateField(w io.Writer, ymod *yang.Module, node yang.Node, addNs bool) {
 	case "leaf-list":
 		l, ok := node.(*yang.LeafList)
 		if !ok {
-			panic("Not a LeafList")
+			errorlog("generateField(): %s.%s not a leaf list", node.NName(), node.Kind())
 		}
 		tn := getTypeName(ymod, l.Type)
 		pre := getPrefix(getType(ymod, l.Type))
@@ -57,14 +57,14 @@ func generateField(w io.Writer, ymod *yang.Module, node yang.Node, addNs bool) {
 	case "list":
 		l, ok := node.(*yang.List)
 		if !ok {
-			panic("Not a Leaf")
+			errorlog("generateField(): %s.%s not a list", node.NName(), node.Kind())
 		}
 		tn := fullName(l)
 		fmt.Fprintf(w, "\t%s []%s `xml:\"%s%s\"`\n", genFN(fieldname), genTN(ymod, tn), nsstr, fieldname)
 	case "uses":
 		u, ok := node.(*yang.Uses)
 		if !ok {
-			panic("Not a Uses")
+			errorlog("generateField(): %s.%s not a uses", node.NName(), node.Kind())
 		}
 		pre := getPrefix(u.Name)
 		if getImportedModuleByPrefix(ymod, pre) == nil {
@@ -72,14 +72,14 @@ func generateField(w io.Writer, ymod *yang.Module, node yang.Node, addNs bool) {
 		}
 		fmt.Fprintf(w, "\t%s\n", genTN(ymod, fieldname))
 	default:
-		errorlog("in generation of field for %s", node.Kind())
+		errorlog("generateField(): unsupported field %s.%s", node.NName(), node.Kind())
 	}
 }
 
 // This function goes through the list of entries that are contained within elements
 // such as grouping, container, lists, etc. and generates the needed type definitions
 func generateTypes(w io.Writer, ymod *yang.Module, node yang.Node, keepXmlID bool) {
-	debuglog("Generating type for %s", node.NName())
+	debuglog("generateTypes(): Generating type for %s", node.NName())
 	switch node.Kind() {
 	case "container":
 		genTypeForContainer(w, ymod, node, keepXmlID)

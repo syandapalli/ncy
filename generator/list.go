@@ -54,7 +54,7 @@ func genTypeForList(w io.Writer, m *yang.Module, n yang.Node) {
 // the fields, match the field name to the passed name and return if it matches.
 // It is different for any field that has 'uses' syntax. For such, we iterate through
 // the fields of the uses structure and identify the match.
-func getNodeFromList(mod *Module, l *yang.List, name string, leaf bool) yang.Node {
+func getNodeFromList(l *yang.List, name string, leaf bool) yang.Node {
 	for _, c1 := range l.Container {
 		if c1.NName() == name {
 			return c1
@@ -71,31 +71,36 @@ func getNodeFromList(mod *Module, l *yang.List, name string, leaf bool) yang.Nod
 		}
 	}
 	for _, u1 := range l.Uses {
-		if node := getNodeFromUses(mod, u1, name); node != nil {
+		if node := getNodeFromUses(u1, name); node != nil {
 			return node
 		}
 	}
 	return nil
 }
 
-func getNodeWithUsesFromList(l *yang.List, name string) yang.Node {
+// This function attempts to locate a uses node within the list recursively
+// till it finds a uses node whic uses the same string as passed above.
+// TODO: prefix handling must be properly handled
+func getMatchingUsesNodeFromList(l *yang.List, name string) yang.Node {
 	for _, u1 := range l.Uses {
-		if u1.NName() == name {
+		uname := getName(u1.NName())
+		iname := getName(name)
+		if uname == iname {
 			return l
 		}
 	}
 	for _, g1 := range l.Grouping {
-		if n := getNodeWithUsesFromGrouping(g1, name); n != nil {
+		if n := getMatchingUsesNodeFromGrouping(g1, name); n != nil {
 			return n
 		}
 	}
 	for _, c1 := range l.Container {
-		if n := getNodeWithUsesFromContainer(c1, name); n != nil {
+		if n := getMatchingUsesNodeFromContainer(c1, name); n != nil {
 			return n
 		}
 	}
 	for _, l1 := range l.List {
-		if n := getNodeWithUsesFromList(l1, name); n != nil {
+		if n := getMatchingUsesNodeFromList(l1, name); n != nil {
 			return n
 		}
 	}

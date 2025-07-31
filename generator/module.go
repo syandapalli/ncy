@@ -93,6 +93,7 @@ func printModule(m *Module) {
 // list
 var modulesByPrefix = map[string]*Module{}
 var modulesByName = map[string]*Module{}
+var yangModulesByName = map[string]*yang.Module{}
 
 // Manage identities for code generation. If an identity is referred
 // to by another identity, type definition/marshal/unmarshal/etc. are
@@ -127,6 +128,7 @@ func addModule(mod *yang.Module) {
 		return
 	}
 	modulesByPrefix[m.prefix] = m
+	yangModulesByName[mod.NName()] = mod
 }
 
 // Adds a submodule to the map within a module. For any prefix/namespace
@@ -254,9 +256,9 @@ func addFileComments(w io.Writer, ymod *yang.Module) {
 // Process the main module and its submodules
 func processModule(mod *Module, outdir string) {
 	for _, sm := range mod.submodules {
-		fmt.Println("***********Processing module", sm.module.NName(), "...")
+		fmt.Println("Processing module", sm.module.NName(), "...")
 		processSubModule(mod, sm, outdir)
-		storeInPrefixModuleMap(sm.module)
+		//storeInPrefixModuleMap(sm.module)
 	}
 }
 
@@ -302,6 +304,9 @@ func processSubModule(mod *Module, submod *SubModule, outdir string) {
 	}
 	for _, t := range submod.module.Typedef {
 		processTypedef(w, submod, m, t)
+	}
+	for _, a := range submod.module.Augment {
+		processAugments(w, submod, m, a)
 	}
 
 	// generate the init() function
@@ -364,23 +369,3 @@ func mergeAugmentsWithSamePath(entries []yang.Node) []yang.Node {
 	return newEntries
 }
 
-// One of the utility functions that help traversal across the YANG specification
-func getGroupingFromMod(mod *Module, name string) *yang.Grouping {
-	prefix := getPrefix(name)
-	gname := getName(name)
-	if prefix != "" {
-		mod = getModuleByPrefix(prefix)
-	}
-	if mod == nil {
-		return nil
-	}
-	for _, sm := range mod.submodules {
-		ymod := sm.module
-		for _, g := range ymod.Grouping {
-			if g.NName() == gname {
-				return g
-			}
-		}
-	}
-	return nil
-}

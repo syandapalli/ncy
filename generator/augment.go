@@ -8,24 +8,20 @@ import (
 )
 
 func (mod *Module) preprocessAugment(aug *yang.Augment) {
-	//fmt.Println("Augment Name", aug.Name, "in module", mod.name)
+	debuglog("preprocessAugment(): name=%s in module %s", aug.Name, mod.name)
 	// Let's locate the position of the augment within the other module
 	needleaf := false
 	node := traverse(aug.Name, aug, needleaf)
 	if node != nil {
-		/*
-		c, ok := node.(*yang.Container)
-		if ok {
-			// Add the augment to the container so that when code is
-			// generated for the container, the augments are used in
-			// field generation. TODO - commented to pass the compilation
-			c.AddAugment(aug)
-		} else {
-			panic("preprocessAugment() - Node located isn't a container: " + nodeString(node))
+		debuglog("preprocessAUgment(): found %s.%s for augment %s", node.NName(), node.Kind(), aug.NName())
+		switch node.Kind() {
+		case "container":
+		case "list":
+		default:
+			errorlog("preprocessAugment(): addition to %s.%s not supported", node.NName(), node.Kind())
 		}
-		*/
 	} else {
-		errorlog("ERROR: Augment %s couldn't be located", aug.NName())
+		errorlog("ERROR: Augment %s of module %s couldn't be located", aug.NName(), mod.name)
 	}
 }
 
@@ -64,19 +60,27 @@ func addAugmentComment(w io.Writer, a *yang.Augment) {
 	fmt.Fprintln(w, "//-------------------------------------------------------------")
 }
 
-func processAugments(w io.Writer, mod *Module, ymod *yang.Module, n yang.Node) {
+func processAugments(w io.Writer, submod *SubModule, ymod *yang.Module, n yang.Node) {
 	a, ok := n.(*yang.Augment)
 	if !ok {
-		panic("Not an Augment")
+		errorlog("processAugments(): %s.%s is not an Augment", n.NName(), n.Kind())
+		return
 	}
 
 	for _, c := range a.Container {
+		debuglog("processAugments(): generating for %s.%s in %s", c.NName(), c.Kind(), a.NName())
+		/*
 		genTypeForContainer(w, ymod, yang.Node(c), false)
-	}
-	/*
 		addAugmentComment(w, a)
 		fmt.Fprintf(w, "type %s struct {\n", genAN(a.FullName()))
 		generateAugments(w, ymod, a)
 		fmt.Fprintf(w, "}\n")
-	*/
+		*/
+	}
+	for _, l := range a.Leaf {
+		debuglog("processAugments(): generating for %s.%s in %s", l.NName(), l.Kind(), a.NName())
+	}
+	for _, l := range a.List {
+		debuglog("processAugments(): generating for %s.%s in %s", l.NName(), l.Kind(), a.NName())
+	}
 }

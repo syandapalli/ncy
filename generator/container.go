@@ -79,7 +79,7 @@ func generateContainerRuntimeNs(w io.Writer, mod *Module, ymod *yang.Module, nam
 	fmt.Fprintf(w, "}\n")
 }
 
-func getNodeFromContainer(mod *Module, c *yang.Container, name string, leaf bool) yang.Node {
+func getNodeFromContainer(c *yang.Container, name string, leaf bool) yang.Node {
 	for _, c1 := range c.Container {
 		if c1.NName() == name {
 			return c1
@@ -96,31 +96,36 @@ func getNodeFromContainer(mod *Module, c *yang.Container, name string, leaf bool
 		}
 	}
 	for _, u1 := range c.Uses {
-		if node := getNodeFromUses(mod, u1, name); node != nil {
+		if node := getNodeFromUses(u1, name); node != nil {
 			return node
 		}
 	}
 	return nil
 }
 
-func getNodeWithUsesFromContainer(c *yang.Container, name string) yang.Node {
+// This function attempts to locate a uses node within the container recursively
+// till it finds a uses node whic uses the same string as passed above.
+// TODO: prefix handling must be properly handled
+func getMatchingUsesNodeFromContainer(c *yang.Container, name string) yang.Node {
 	for _, u1 := range c.Uses {
-		if u1.NName() == name {
+		uname := getName(u1.NName())
+		iname := getName(name)
+		if uname == iname {
 			return c
 		}
 	}
 	for _, g1 := range c.Grouping {
-		if n := getNodeWithUsesFromGrouping(g1, name); n != nil {
+		if n := getMatchingUsesNodeFromGrouping(g1, name); n != nil {
 			return n
 		}
 	}
 	for _, c1 := range c.Container {
-		if n := getNodeWithUsesFromContainer(c1, name); n != nil {
+		if n := getMatchingUsesNodeFromContainer(c1, name); n != nil {
 			return n
 		}
 	}
 	for _, l1 := range c.List {
-		if n := getNodeWithUsesFromList(l1, name); n != nil {
+		if n := getMatchingUsesNodeFromList(l1, name); n != nil {
 			return n
 		}
 	}

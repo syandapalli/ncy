@@ -34,6 +34,7 @@ func getType(m *yang.Module, t *yang.Type) string {
 // are typedef, leaf, leaf-list and deviate. We don't yet support
 // deviate and support the rest.
 func getTypeName(m *yang.Module, t *yang.Type) string {
+	debuglog("getTypeName(): type name for %s.%s in module %s", t.NName(), t.Kind(), m.NName())
 	p := t.ParentNode()
 	switch t.Name {
 	case "uint8", "uint16", "uint32", "uint64", "int8", "int16", "int32", "int64", "string":
