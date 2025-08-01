@@ -280,9 +280,11 @@ func main() {
 			fmt.Println("Didn't find module")
 		}
 	}
+	*/
 	for _, m := range modulesByName {
 		processModule(m, outdir)
 	}
+	/*
 	m := modulesByName["openconfig-local-routing-network-instance"]
 	processModule(m, outdir)
 	*/

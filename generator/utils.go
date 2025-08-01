@@ -17,9 +17,8 @@ import (
 // ****************************************************************
 // Utilities for managing the debugging. It is possible to turn the
 // debug on/off but the error logs are always emitted
+var debugenabled bool = false
 //var debugenabled bool = true
-//var debugenabled bool = true
-var debugenabled bool = true
 func debuglog(format string, args ...interface{}) {
 	if debugenabled {
 		fmt.Printf("DEBUG: " + format + "\n", args...)
@@ -615,6 +614,7 @@ func traverse(path string, node yang.Node, needleaf bool) yang.Node {
 	var accPath string
 	var curr, next yang.Node
 
+	debuglog("traverse(): Looking for %s needed by %s.%s", path, node.NName(), node.Kind())
 	// yang supports quite a varied set of capabilities and we do not intend support them all.
 	// We are going to trim a known form which has text between '[' and ']'. The removal
 	// should not impact the traversal to locate the the required node for the purpose of 
@@ -644,6 +644,7 @@ func traverse(path string, node yang.Node, needleaf bool) yang.Node {
 		if prefix != "" {
 			ymod := getImportedYangModuleByPrefix(getMyYangModule(node), prefix)
 			if ymod == nil {
+				errorlog("traverse(): Failed to find prefix=%s for %s.%s", prefix, node.NName(), node.Kind())
 				return nil
 			}
 			next = ymod

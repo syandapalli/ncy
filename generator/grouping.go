@@ -96,6 +96,7 @@ func generateRuntimeNs(w io.Writer, submod *SubModule, ymod *yang.Module, g *yan
 // included grouping.
 // TODO. The iteration for 'uses' is not implemented yet
 func getNodeFromGrouping(n yang.Node, name string, leaf bool) yang.Node {
+	debuglog("getNodeFromGrouping(): looking for %s in %s.%s", name, n.NName(), n.Kind())
 	g, ok := n.(*yang.Grouping)
 	if !ok {
 		errorlog("a non grouping passed: %s", g.Kind())
@@ -106,14 +107,19 @@ func getNodeFromGrouping(n yang.Node, name string, leaf bool) yang.Node {
 			return c1
 		}
 	}
-	for _, c1 := range g.Leaf {
-		if c1.NName() == name {
-			return c1
+	for _, l1 := range g.Leaf {
+		if l1.NName() == name {
+			return l1
 		}
 	}
-	for _, c1 := range g.LeafList {
-		if c1.NName() == name {
-			return c1
+	for _, l1 := range g.List {
+		if l1.NName() == name {
+			return l1
+		}
+	}
+	for _, l1 := range g.LeafList {
+		if l1.NName() == name {
+			return l1
 		}
 	}
 	for _, u1 := range g.Uses {

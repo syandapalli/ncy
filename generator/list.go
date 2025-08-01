@@ -62,14 +62,19 @@ func getNodeFromList(l *yang.List, fname string, leaf bool) yang.Node {
 			return c1
 		}
 	}
-	for _, c1 := range l.Leaf {
-		if c1.NName() == name {
-			return c1
+	for _, l1 := range l.Leaf {
+		if l1.NName() == name {
+			return l1
 		}
 	}
-	for _, c1 := range l.LeafList {
-		if c1.NName() == name {
-			return c1
+	for _, l1 := range l.LeafList {
+		if l1.NName() == name {
+			return l1
+		}
+	}
+	for _, l1 := range l.List {
+		if l1.NName() == name {
+			return l1
 		}
 	}
 	for _, u1 := range l.Uses {
