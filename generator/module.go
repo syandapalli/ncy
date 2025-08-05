@@ -199,9 +199,13 @@ func fileHeader(mod *Module, submod *SubModule, w io.Writer, keepXmlID bool) {
 	fmt.Fprintf(w, "\t\"strconv\"\n")
 	fmt.Fprintf(w, "\t\"math\"\n")
 	fmt.Fprintf(w, "\t\"encoding/base64\"\n")
+	//TODO: Manage inclusion of nc/nc better
+	/*
 	if keepXmlID {
 		fmt.Fprintf(w, "\tnc \"nc/nc\"\n")
 	}
+	*/
+	fmt.Fprintf(w, "\tnc \"nc/nc\"\n")
 	fmt.Fprintf(w, ")\n")
 	// Add comments to the file that provide the information about the
 	// source file that was used to generate the code
@@ -288,9 +292,8 @@ func processSubModule(mod *Module, submod *SubModule, outdir string) {
 	for _, u := range submod.module.Uses {
 		groupingNames[u.Name] = struct{}{}
 	}
-	// TODO
-	//keepXmlID := checkIfNcImportRequired(submod.module.Entries, groupingNames)
-	keepXmlID := true
+	// TODO. Check the logic
+	keepXmlID := checkIfNcImportRequired(submod, groupingNames)
 
 	// Create file header
 	fileHeader(mod, submod, w, keepXmlID)
@@ -312,6 +315,8 @@ func processSubModule(mod *Module, submod *SubModule, outdir string) {
 
 	// generate the init() function
 	fmt.Fprintf(w, "func init() {\n")
+	fmt.Fprintf(w, "\ts := \"dummy\"\n")
+	fmt.Fprintf(w, "\tnc.Marshal(s)\n")
 	for _, s := range submod.initfunc {
 		fmt.Fprintf(w, "\t%s", s)
 	}
@@ -320,17 +325,10 @@ func processSubModule(mod *Module, submod *SubModule, outdir string) {
 }
 
 // To use XMLname we need nc module to be imported. This function check whether we need it or not.
-func checkIfNcImportRequired(entries []yang.Node, groupingNames map[string]struct{}) bool {
-	for _, e := range entries {
-		switch e.Kind() {
-		case "grouping":
-			g, ok := e.(*yang.Grouping)
-			if !ok {
-				panic("Not Grouping.")
-			}
-			if _, ok := groupingNames[g.Name]; ok {
-				return true
-			}
+func checkIfNcImportRequired(submod *SubModule, groupingNames map[string]struct{}) bool {
+	for _, g := range submod.module.Grouping {
+		if _, ok := groupingNames[g.Name]; ok {
+			return true
 		}
 	}
 	return false
