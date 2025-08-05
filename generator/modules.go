@@ -21,7 +21,7 @@ func generateMain(outdir string) {
 }
 
 func openMainFile(outdir string) *os.File {
-	outpath := outdir + "/yang-go/main.go"
+	outpath := outdir + "/" + modulename + "/main.go"
 	w, err := os.OpenFile(outpath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		errorlog("unable to open file %s", err.Error())

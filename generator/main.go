@@ -76,6 +76,7 @@ var modules = []string {
 	"openconfig-wifi-types",
 	"openconfig-system",
 	"openconfig-platform-port",
+	"openconfig-policy-types", // randomly inserted here
 	"openconfig-if-ip",
 	"openconfig-ap-manager",
 	"openconfig-wifi-mac",
@@ -176,6 +177,7 @@ var modules = []string {
 	"openconfig-ate-intf",
 	"openconfig-ate-flow", }
 
+var modulename string
 // Read the files from the directory
 func readDir(path string, suffix string) []string {
 	var filelist []string
@@ -216,6 +218,7 @@ func main() {
 	var indir, outdir, apiIndir string
 	getopt.StringVarLong(&indir, "indir", 'i', "directory to look for yang files")
 	getopt.StringVarLong(&outdir, "outdir", 'o', "directory for output files")
+	getopt.StringVarLong(&modulename, "modulename", 'm', "golang package name")
 	getopt.StringVarLong(&apiIndir, "api-indir", 'I', "directory for input api files")
 	getopt.Parse()
 
@@ -224,6 +227,9 @@ func main() {
 	}
 	if outdir == "" {
 		log.Fatalf("-o: output directory must be present")
+	}
+	if  modulename == "" {
+		modulename = "goyang"
 	}
 
 	// We recursively go through the directory for all the yang files which will
@@ -270,22 +276,11 @@ func main() {
 	// Now generate code for each module. We generate a .go file for each
 	// yang module
 	fmt.Println("******        Start of processing of modules        ********")
-	/*
-	for _, mod := range modules {
-		fmt.Println("Preprocessing module", m.name, "....")
-		m, ok := modulesByName[mod]
-		if ok {
-			m.preprocessModule()
-		} else {
-			fmt.Println("Didn't find module")
-		}
-	}
-	*/
 	for _, m := range modulesByName {
 		processModule(m, outdir)
 	}
 	/*
-	m := modulesByName["openconfig-local-routing-network-instance"]
+	m := modulesByName["openconfig-policy-types"]
 	processModule(m, outdir)
 	*/
 	/*

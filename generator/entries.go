@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/openconfig/goyang/pkg/yang"
 )
@@ -17,6 +16,7 @@ func generateField(w io.Writer, ymod *yang.Module, node yang.Node, addNs bool) {
 		nsstr = mod.namespace + " "
 	}
 	fieldname := node.NName()
+	ymod = getMyYangModule(node)
 	debuglog("generateField(): Generating for field %s.%s", node.NName(), node.Kind())
 	switch node.Kind() {
 	case "container":
@@ -78,7 +78,7 @@ func generateField(w io.Writer, ymod *yang.Module, node yang.Node, addNs bool) {
 
 // This function goes through the list of entries that are contained within elements
 // such as grouping, container, lists, etc. and generates the needed type definitions
-func generateTypes(w io.Writer, ymod *yang.Module, node yang.Node, keepXmlID bool) {
+func generateType(w io.Writer, ymod *yang.Module, node yang.Node, keepXmlID bool) {
 	debuglog("generateTypes(): Generating type for %s", node.NName())
 	switch node.Kind() {
 	case "container":
@@ -92,47 +92,3 @@ func generateTypes(w io.Writer, ymod *yang.Module, node yang.Node, keepXmlID boo
 	}
 }
 
-func generateAugments(w io.Writer, ymod *yang.Module, aug *yang.Augment) {
-	mod := getMyModule(ymod)
-	nsstr := mod.namespace + " "
-	switch {
-	case len(aug.Uses) > 0:
-		for _, u := range aug.Uses {
-			tname := u.Name
-			if !strings.Contains(tname, ":") {
-				tname = ymod.Prefix.Name + ":" + tname
-			}
-			fmt.Fprintf(w, "\t%s\n", genFN(tname))
-		}
-	case len(aug.Leaf) > 0:
-		for _, l := range aug.Leaf {
-			fn := l.NName()
-			tn := getTypeName(ymod, l.Type)
-			pre := getPrefix(getType(ymod, l.Type))
-			if getImportedModuleByPrefix(ymod, pre) == nil {
-				break
-			}
-			fmt.Fprintf(w, "\t%s_Prsnt bool `xml:\",presfield\"`\n", genFN(fn))
-			fmt.Fprintf(w, "\t%s %s `xml:\"%s%s\"`\n", genFN(fn), tn, nsstr, fn)
-		}
-	case len(aug.LeafList) > 0:
-		for _, l := range aug.LeafList {
-			fn := l.NName()
-			tn := getTypeName(ymod, l.Type)
-			pre := getPrefix(getType(ymod, l.Type))
-			if getImportedModuleByPrefix(ymod, pre) == nil {
-				break
-			}
-			fmt.Fprintf(w, "/* Generated from here pre = %s, tn = %s */\n", pre, l.Type.Name)
-			fmt.Fprintf(w, "\t%s []%s `xml:\"%s%s\"`\n", genFN(fn), tn, nsstr, fn)
-		}
-	case len(aug.Container) > 0:
-		for _, c := range aug.Container {
-			fn := c.NName()
-			fmt.Fprintf(w, "\t%s_Prsnt bool `xml:\",presfield\"`\n", genFN(fn))
-			fmt.Fprintf(w, "\t%s %s_cont `xml:\"%s%s\"`\n", genFN(fn), genTN(ymod, fn), nsstr, fn)
-		}
-	default:
-		errorlog("Augment case not supported yet: %s", nodeContextStr(aug))
-	}
-}

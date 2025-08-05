@@ -163,8 +163,16 @@ func processIdentity(w io.Writer, submod *SubModule, ymod *yang.Module, n yang.N
 	// identity uses this as base. For now, we will always add the
 	// absolute base by default. However, the check here needs to happen
 	// and is resolved as base is also added to the list
-	if checkIdentity(ymod, id) == id {
+	if id1 := checkIdentity(ymod, id); id1 == id {
 		generateTypeDef(w, ymod, id)
+	} else {
+		if id1 != nil {
+			debuglog("processIdentity(): not generating for %s.%s due to %s.%s",
+			id.NName(), id.Kind(), id1.NName(), id1.Kind())
+		} else {
+			debuglog("processIdentity(): not generating for %s.%s due to nil",
+			id.NName(), id.Kind())
+		}
 	}
 
 	// Generate other code related to filling up the maps used in
@@ -216,13 +224,16 @@ func addBaseIdentity(m *yang.Module, id *yang.Identity) {
 }
 
 func (m *Module) preprocessIdentities() {
+	debuglog("preprocessIdentiites(): processing %s", m.name)
 	for _, sm := range m.submodules {
 		for _, i := range sm.module.Identity {
+			debuglog("preprocessIdentities(): processing %s.%s", i.NName(), i.Kind())
 			if len(i.Base) != 0 {
 				// If the identity has a base, locate it
 				mod, id := locateBase(sm.module, i)
 				if id == nil {
-					panic("Base couldn't be located")
+					errorlog("Base couldn't be located %s.%s", i.NName(), i.Kind())
+					continue
 				}
 				// Add the base to the module to be used when
 				// code is generated

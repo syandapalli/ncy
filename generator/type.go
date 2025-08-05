@@ -43,9 +43,9 @@ func getTypeName(m *yang.Module, t *yang.Type) string {
 		} else {
 			if p.NName() == "union" {
 				id := getIndex(t)
-				return genTN(m, p.NName()) + "_" + t.Name + "_" + strconv.FormatInt(int64(id), 10)
+				return genTN(m, fullName(p)) + "_" + t.Name + "_" + strconv.FormatInt(int64(id), 10)
 			} else {
-				return genTN(m, p.NName())
+				return genTN(m, fullName(p))
 			}
 		}
 	case "decimal8", "decimal16", "decimal32", "decimal64":
@@ -54,9 +54,9 @@ func getTypeName(m *yang.Module, t *yang.Type) string {
 		} else {
 			if p.NName() == "union" {
 				id := getIndex(t)
-				return genTN(m, p.NName()) + "_" + t.Name + "_" + strconv.FormatInt(int64(id), 10)
+				return genTN(m, fullName(p)) + "_" + t.Name + "_" + strconv.FormatInt(int64(id), 10)
 			} else {
-				return genTN(m, p.NName())
+				return genTN(m, fullName(p))
 			}
 		}
 	case "leafref":
@@ -69,17 +69,17 @@ func getTypeName(m *yang.Module, t *yang.Type) string {
 	case "boolean":
 		if t.ParentNode().NName() == "union" {
 			id := getIndex(t)
-			return genTN(m, p.NName()) + "_" + "bool" + "_" + strconv.FormatInt(int64(id), 10)
+			return genTN(m, fullName(p)) + "_" + "bool" + "_" + strconv.FormatInt(int64(id), 10)
 		}
 		return "bool"
 	case "enumeration", "union":
-		return genTN(m, p.NName())
+		return genTN(m, fullName(p))
 	case "binary":
 		if p.NName() != "union" {
-			return genTN(m, p.NName())
+			return genTN(m, fullName(p))
 		} else {
 			id := getIndex(t)
-			return genTN(m, p.NName()) + "_" + t.Name + "_" + strconv.FormatInt(int64(id), 10)
+			return genTN(m, fullName(p)) + "_" + t.Name + "_" + strconv.FormatInt(int64(id), 10)
 		}
 	case "identityref":
 		return genTN(m, t.IdentityBase.Name)
@@ -138,7 +138,7 @@ func processDefaultType(w io.Writer, m *yang.Module, t *yang.Type) {
 	}
 
 	// Basic type definition
-	dtn := genTN(m, p.NName())
+	dtn := genTN(m, fullName(p))
 	otn := genTN(m, t.Name)
 	fmt.Fprintf(w, "type %s %s\n", dtn, otn)
 
@@ -167,7 +167,7 @@ func processBoolType(w io.Writer, m *yang.Module, t *yang.Type) {
 
 	// Generate the type name as this is part of a typedef and requires
 	// a type definition
-	tn := genTN(m, t.ParentNode().NName())
+	tn := genTN(m, fullName(t.ParentNode()))
 	// If this is part of union, to make it unique, we need
 	// to add the type name to the full name
 	if p.Kind() == "type" && p.NName() == "union" {
@@ -203,7 +203,7 @@ func processBitsType(w io.Writer, m *yang.Module, t *yang.Type) {
 
 	// Generate the type name as this is part of a typedef and requires
 	// a type definition
-	tn := genTN(m, t.ParentNode().NName())
+	tn := genTN(m, fullName(t.ParentNode()))
 
 	// We now have everything to be able to generate the code
 	fmt.Fprintf(w, "type %s uint64\n", tn)
@@ -227,7 +227,7 @@ func processUintType(w io.Writer, m *yang.Module, t *yang.Type) {
 	if err != nil {
 		panic("Invalid size for uint: " + sizestr)
 	}
-	tn := genTN(m, p.NName())
+	tn := genTN(m, fullName(p))
 	// If this is part of union, to make it unique, we need
 	// to add the type name to the full name
 	if p.Kind() == "type" && p.NName() == "union" {
@@ -302,7 +302,7 @@ func processIntType(w io.Writer, m *yang.Module, t *yang.Type) {
 	if err != nil {
 		panic("Invalid size for int: " + sizestr)
 	}
-	tn := genTN(m, p.NName())
+	tn := genTN(m, fullName(p))
 	// If this is part of union, to make it unique, we need
 	// to add the type name to the full name
 	if p.Kind() == "type" && p.NName() == "union" {
@@ -374,7 +374,7 @@ func processDecimalType(w io.Writer, m *yang.Module, t *yang.Type) {
 	// var min, max string
 	typestr := t.Name
 	sizestr := strings.ReplaceAll(typestr, "decimal", "")
-	tn := genTN(m, t.ParentNode().NName())
+	tn := genTN(m, fullName(t.ParentNode()))
 	// If this is part of union, to make it unique, we need
 	// to add the type name to the full name
 	if p.Kind() == "type" && p.NName() == "union" {
@@ -439,7 +439,7 @@ func processStringType(w io.Writer, m *yang.Module, t *yang.Type) {
 	var pattern string
 
 	// First generate the type definition
-	tn := genTN(m, t.ParentNode().NName())
+	tn := genTN(m, fullName(t.ParentNode()))
 	// If this is part of union, to make it unique, we need
 	// to add the type name to the full name
 	if p.Kind() == "type" && p.NName() == "union" {
@@ -526,7 +526,7 @@ func processStringType(w io.Writer, m *yang.Module, t *yang.Type) {
 // to be the encoded type.
 func processUnionType(w io.Writer, m *yang.Module, t *yang.Type) {
 	// First generate the fields of the union
-	tn := genTN(m, t.ParentNode().NName())
+	tn := genTN(m, fullName(t.ParentNode()))
 	fmt.Fprintf(w, "type %s struct {\n", tn)
 	for id, it := range t.Type {
 		fmt.Fprintf(w, "\t%s_%d_Prsnt bool `xml:\",presfield\"`\n", genFN(it.Name), id)
@@ -576,7 +576,7 @@ func processEnumType(w io.Writer, m *yang.Module, t *yang.Type) {
 
 	// Generate the type statement for the enum. All enums
 	// translate to int in our implementation
-	tname := genTN(m, t.ParentNode().NName())
+	tname := genTN(m, fullName(t.ParentNode()))
 	fmt.Fprintf(w, "type %s int\n", tname)
 
 	// Generate the constants for the enums
@@ -638,7 +638,7 @@ func processLeafref(w io.Writer, m *yang.Module, t *yang.Type) {
 		errorlog("leaf for referrence %s is not found", path)
 		return
 	}
-	fmt.Fprintf(w, "type %s %s\n", genTN(m, p.NName()), getTypeName(m, l.Type))
+	fmt.Fprintf(w, "type %s %s\n", genTN(m, fullName(p)), getTypeName(m, l.Type))
 }
 
 // Process leafref where a path is used to parse the tree to obtain the type
@@ -650,7 +650,7 @@ func processIdentityRef(w io.Writer, m *yang.Module, t *yang.Type) {
 		return
 	}
 	otn := getTypeName(m, t)
-	itn := genTN(m, p.NName())
+	itn := genTN(m, fullName(p))
 	fmt.Fprintf(w, "type %s %s\n", itn, otn)
 	// Generate the marshal code
 	fmt.Fprintf(w, "func (x %s)MarshalText(ns string) ([]byte, error) {\n", itn)
@@ -683,7 +683,7 @@ func processBinaryType(w io.Writer, m *yang.Module, t *yang.Type) {
 	// Binary type is an array of bytes which should be encoded in
 	// base64 encoding.
 	// First generate the type definition
-	tn := genTN(m, p.NName())
+	tn := genTN(m, fullName(p))
 	if p.Kind() == "type" && p.NName() == "union" {
 		id := getIndex(t)
 		tn = tn + "_" + t.Name + "_" + strconv.FormatInt(int64(id), 10)

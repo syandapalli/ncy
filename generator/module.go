@@ -102,6 +102,7 @@ var yangModulesByName = map[string]*yang.Module{}
 
 // add an identity for which code must be generated
 func (m *Module) addBaseIdentity(id *yang.Identity) {
+	debuglog("addBaseIdentity(): adding %s.%s in %s", id.NName(), id.Kind(), m.name)
 	m.identities[id.Name] = id
 }
 
@@ -199,7 +200,7 @@ func fileHeader(mod *Module, submod *SubModule, w io.Writer, keepXmlID bool) {
 	fmt.Fprintf(w, "\t\"math\"\n")
 	fmt.Fprintf(w, "\t\"encoding/base64\"\n")
 	if keepXmlID {
-		fmt.Fprintf(w, "\tnc \"toradapter/lib/encoding/nc\"\n")
+		fmt.Fprintf(w, "\tnc \"nc/nc\"\n")
 	}
 	fmt.Fprintf(w, ")\n")
 	// Add comments to the file that provide the information about the
@@ -272,7 +273,7 @@ func processSubModule(mod *Module, submod *SubModule, outdir string) {
 	inpath := m.Source.Location()
 	_, file := path.Split(inpath)
 	mainname := strings.Split(file, ".yang")
-	outpath := outdir + "/yang-go/" + mainname[0] + ".go"
+	outpath := outdir + "/" + modulename + "/" + mainname[0] + ".go"
 
 	// If outpath is not present then create it.
 	ensureDirectory(outpath)

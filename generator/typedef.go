@@ -33,6 +33,7 @@ func processTypedef(w io.Writer, submod *SubModule, ymod *yang.Module, n yang.No
 
 func generateTypedefRuntimeNs(w io.Writer, submod *SubModule, ymod *yang.Module, t *yang.Typedef) {
 	fmt.Fprintf(w, "func (x %s) RuntimeNs() string {\n", genTN(ymod, t.NName()))
-	fmt.Fprintf(w, "\treturn %s_ns\n", genFN(submod.name))
+	mod := getMyModule(ymod)
+	fmt.Fprintf(w, "\treturn %s_ns\n", genFN(mod.name))
 	fmt.Fprintf(w, "}\n")
 }

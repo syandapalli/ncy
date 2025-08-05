@@ -63,18 +63,24 @@ func processGrouping(w io.Writer, submod *SubModule, ymod *yang.Module, n yang.N
 	fmt.Fprintf(w, "}\n")
 
 	// Generate runtime namespace function
-	generateRuntimeNs(w, submod, ymod, g)
+	generateGroupingRuntimeNs(w, submod, ymod, g)
 
 	// The code below triggers the code generation for the
 	// constituents of the grouping
 	for _, l1 := range g.Leaf {
-		generateTypes(w, ymod, l1, addNs)
+		if l1.ParentNode() == g {
+			generateType(w, ymod, l1, addNs)
+		}
 	}
 	for _, c1 := range g.Container {
-		generateTypes(w, ymod, c1, addNs)
+		if c1.ParentNode() == g {
+			generateType(w, ymod, c1, addNs)
+		}
 	}
-	for _, g1 := range g.Grouping {
-		generateTypes(w, ymod, g1, addNs)
+	for _, l1 := range g.List {
+		if l1.ParentNode() == g {
+			generateType(w, ymod, l1, addNs)
+		}
 	}
 	fmt.Fprintf(w, "\n")
 
@@ -83,9 +89,10 @@ func processGrouping(w io.Writer, submod *SubModule, ymod *yang.Module, n yang.N
 
 // Namespace is an important aspect of NC/XML. This function allows us to return
 // namespace for the structures we generate in a granular fashion.
-func generateRuntimeNs(w io.Writer, submod *SubModule, ymod *yang.Module, g *yang.Grouping) {
+func generateGroupingRuntimeNs(w io.Writer, submod *SubModule, ymod *yang.Module, g *yang.Grouping) {
 	fmt.Fprintf(w, "func (x %s) RuntimeNs() string {\n", genTN(ymod, g.NName()))
-	fmt.Fprintf(w, "\treturn %s_ns\n", genFN(submod.name))
+	mod := getMyModule(ymod)
+	fmt.Fprintf(w, "\treturn %s_ns\n", genFN(mod.name))
 	fmt.Fprintf(w, "}\n")
 }
 

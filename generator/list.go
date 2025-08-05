@@ -40,13 +40,19 @@ func genTypeForList(w io.Writer, m *yang.Module, n yang.Node) {
 	// The code below generates the type definitions needed
 	// for the constituents inside a list
 	for _, c1 := range l.Container {
-		generateTypes(w, m, c1, false)
+		if c1.ParentNode() == l {
+			generateType(w, m, c1, false)
+		}
 	}
 	for _, l1 := range l.Leaf {
-		generateTypes(w, m, l1, false)
+		if l1.ParentNode() == l {
+			generateType(w, m, l1, false)
+		}
 	}
 	for _, l1 := range l.List {
-		generateTypes(w, m, l1, false)
+		if l1.ParentNode() == l {
+			generateType(w, m, l1, false)
+		}
 	}
 }
 

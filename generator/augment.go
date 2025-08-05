@@ -6,6 +6,30 @@ import (
 
 	"github.com/openconfig/goyang/pkg/yang"
 )
+func addContainer(c *yang.Container, cs []*yang.Container) []*yang.Container {
+	for _, x := range cs {
+		if x == c {
+			return cs
+		}
+	}
+	return append(cs, c)
+}
+func addList(l *yang.List, ls []*yang.List) []*yang.List {
+	for _, x := range ls {
+		if x == l {
+			return ls
+		}
+	}
+	return append(ls, l)
+}
+func addLeaf(l *yang.Leaf, ls []*yang.Leaf) []*yang.Leaf {
+	for _, x := range ls {
+		if x == l {
+			return ls
+		}
+	}
+	return append(ls, l)
+}
 
 func addAugmentToContainer(a *yang.Augment, n yang.Node) {
 	debuglog("addAugmentsToContainer(): adding %s to %s.%s", a.NName(), n.NName(), n.Kind())
@@ -26,13 +50,16 @@ func addAugmentToContainer(a *yang.Augment, n yang.Node) {
 			continue
 		}
 		for _, c1 := range g.Container {
-			c.Container = append(c.Container, c1)
+			c.Container = addContainer(c1, c.Container)
+			//c.Container = append(c.Container, c1)
 		}
 		for _, l1 := range g.List {
-			c.List = append(c.List, l1)
+			c.List = addList(l1, c.List)
+			//c.List = append(c.List, l1)
 		}
 		for _, l1 := range g.Leaf {
-			c.Leaf = append(c.Leaf, l1)
+			c.Leaf = addLeaf(l1, c.Leaf)
+			//c.Leaf = append(c.Leaf, l1)
 		}
 	}
 }
@@ -56,13 +83,16 @@ func addAugmentToList(a *yang.Augment, n yang.Node) {
 			continue
 		}
 		for _, c1 := range g.Container {
-			l.Container = append(l.Container, c1)
+			l.Container = addContainer(c1, l.Container)
+			//l.Container = append(l.Container, c1)
 		}
 		for _, l1 := range g.List {
-			l.List = append(l.List, l1)
+			l.List = addList(l1, l.List)
+			//l.List = append(l.List, l1)
 		}
 		for _, l1 := range g.Leaf {
-			l.Leaf = append(l.Leaf, l1)
+			l.Leaf = addLeaf(l1, l.Leaf)
+			//l.Leaf = append(l.Leaf, l1)
 		}
 	}
 }
@@ -131,9 +161,9 @@ func processAugments(w io.Writer, submod *SubModule, ymod *yang.Module, n yang.N
 
 	for _, c := range a.Container {
 		debuglog("processAugments(): generating for %s.%s in %s", c.NName(), c.Kind(), a.NName())
-		/*
-		genTypeForContainer(w, ymod, yang.Node(c), false)
 		addAugmentComment(w, a)
+		genTypeForContainer(w, ymod, yang.Node(c), false)
+		/*
 		fmt.Fprintf(w, "type %s struct {\n", genAN(a.FullName()))
 		generateAugments(w, ymod, a)
 		fmt.Fprintf(w, "}\n")
@@ -141,8 +171,59 @@ func processAugments(w io.Writer, submod *SubModule, ymod *yang.Module, n yang.N
 	}
 	for _, l := range a.Leaf {
 		debuglog("processAugments(): generating for %s.%s in %s", l.NName(), l.Kind(), a.NName())
+		addAugmentComment(w, a)
+		genTypeForLeaf(w, ymod, l)
 	}
 	for _, l := range a.List {
 		debuglog("processAugments(): generating for %s.%s in %s", l.NName(), l.Kind(), a.NName())
+		addAugmentComment(w, a)
+		genTypeForList(w, ymod, l)
 	}
 }
+
+/*
+func generateAugments(w io.Writer, ymod *yang.Module, aug *yang.Augment) {
+	mod := getMyModule(ymod)
+	nsstr := mod.namespace + " "
+	switch {
+	case len(aug.Uses) > 0:
+		for _, u := range aug.Uses {
+			tname := u.Name
+			if !strings.Contains(tname, ":") {
+				tname = ymod.Prefix.Name + ":" + tname
+			}
+			fmt.Fprintf(w, "\t%s\n", genFN(tname))
+		}
+	case len(aug.Leaf) > 0:
+		for _, l := range aug.Leaf {
+			fn := l.NName()
+			tn := getTypeName(ymod, l.Type)
+			pre := getPrefix(getType(ymod, l.Type))
+			if getImportedModuleByPrefix(ymod, pre) == nil {
+				break
+			}
+			fmt.Fprintf(w, "\t%s_Prsnt bool `xml:\",presfield\"`\n", genFN(fn))
+			fmt.Fprintf(w, "\t%s %s `xml:\"%s%s\"`\n", genFN(fn), tn, nsstr, fn)
+		}
+	case len(aug.LeafList) > 0:
+		for _, l := range aug.LeafList {
+			fn := l.NName()
+			tn := getTypeName(ymod, l.Type)
+			pre := getPrefix(getType(ymod, l.Type))
+			if getImportedModuleByPrefix(ymod, pre) == nil {
+				break
+			}
+			fmt.Fprintf(w, "// Generated from here pre = %s, tn = %s \n", pre, l.Type.Name)
+			fmt.Fprintf(w, "\t%s []%s `xml:\"%s%s\"`\n", genFN(fn), tn, nsstr, fn)
+		}
+	case len(aug.Container) > 0:
+		for _, c := range aug.Container {
+			fn := c.NName()
+			fmt.Fprintf(w, "\t%s_Prsnt bool `xml:\",presfield\"`\n", genFN(fn))
+			fmt.Fprintf(w, "\t%s %s_cont `xml:\"%s%s\"`\n", genFN(fn), genTN(ymod, fn), nsstr, fn)
+		}
+	default:
+		errorlog("Augment case not supported yet: %s", nodeContextStr(aug))
+	}
+}
+*/

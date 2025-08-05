@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/openconfig/goyang/pkg/yang"
 )
@@ -22,6 +21,7 @@ func addContainerComment(w io.Writer, c *yang.Container) {
 }
 
 func genTypeForContainer(w io.Writer, ymod *yang.Module, n yang.Node, keepXmlID bool) {
+	var name string
 	var addNs bool = false
 	c, ok := n.(*yang.Container)
 	if !ok {
@@ -29,9 +29,9 @@ func genTypeForContainer(w io.Writer, ymod *yang.Module, n yang.Node, keepXmlID 
 	}
 
 	addContainerComment(w, c)
-	name := fullName(c)
-	if strings.Contains(c.NName(), "/") {
-		// TODO: This container is inside augment. Use NName instead.
+	if c.ParentNode().Kind() != "augment" {
+		name = fullName(c)
+	} else {
 		name = c.NName()
 	}
 	fmt.Fprintf(w, "type %s_cont struct {\n", genTN(ymod, name))
@@ -63,13 +63,19 @@ func genTypeForContainer(w io.Writer, ymod *yang.Module, n yang.Node, keepXmlID 
 	// The code below triggers the code generation for the
 	// constituents of the grouping
 	for _, c1 := range c.Container {
-		generateTypes(w, ymod, c1, false)
+		if c1.ParentNode() == c {
+			generateType(w, ymod, c1, false)
+		}
 	}
 	for _, l1 := range c.Leaf {
-		generateTypes(w, ymod, l1, false)
+		if l1.ParentNode() == c {
+			generateType(w, ymod, l1, false)
+		}
 	}
 	for _, l1 := range c.List {
-		generateTypes(w, ymod, l1, false)
+		if l1.ParentNode() == c {
+			generateType(w, ymod, l1, false)
+		}
 	}
 }
 
