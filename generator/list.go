@@ -83,6 +83,11 @@ func getNodeFromList(l *yang.List, fname string, leaf bool) yang.Node {
 			return l1
 		}
 	}
+	for _, c1 := range l.Choice {
+		if c1.NName() == name {
+			return c1
+		}
+	}
 	for _, u1 := range l.Uses {
 		if node := getNodeFromUses(u1, name); node != nil {
 			return node
@@ -102,11 +107,11 @@ func getMatchingUsesNodeFromList(l *yang.List, name string) yang.Node {
 			return l
 		}
 	}
-	for _, g1 := range l.Grouping {
-		if n := getMatchingUsesNodeFromGrouping(g1, name); n != nil {
-			return n
-		}
-	}
+	//for _, g1 := range l.Grouping {
+	//	if n := getMatchingUsesNodeFromGrouping(g1, name); n != nil {
+	//		return n
+	//	}
+	//}
 	for _, c1 := range l.Container {
 		if n := getMatchingUsesNodeFromContainer(c1, name); n != nil {
 			return n
@@ -114,6 +119,16 @@ func getMatchingUsesNodeFromList(l *yang.List, name string) yang.Node {
 	}
 	for _, l1 := range l.List {
 		if n := getMatchingUsesNodeFromList(l1, name); n != nil {
+			return n
+		}
+	}
+	for _, c1 := range l.Choice {
+		if n := getMatchingUsesNodeFromChoice(c1, name); n != nil {
+			return n
+		}
+	}
+	for _, n1 := range l.Notification {
+		if n := getMatchingUsesNodeFromNotification(n1, name); n != nil {
 			return n
 		}
 	}

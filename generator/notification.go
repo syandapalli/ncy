@@ -1,12 +1,13 @@
 package main
 
 import (
-	"fmt"
-	"io"
+	//"fmt"
+	//"io"
 
 	"github.com/openconfig/goyang/pkg/yang"
 )
 
+/*
 func addContainerComment(w io.Writer, c *yang.Container) {
 	fmt.Fprintln(w, "//------------------------------------------------------------")
 	fmt.Fprint(w, "//  Name:\n")
@@ -84,31 +85,32 @@ func generateContainerRuntimeNs(w io.Writer, mod *Module, ymod *yang.Module, nam
 	fmt.Fprintf(w, "\treturn %s_ns\n", genFN(mod.name))
 	fmt.Fprintf(w, "}\n")
 }
+*/
 
-func getNodeFromContainer(c *yang.Container, fname string, leaf bool) yang.Node {
-	debuglog("getNodeFromContainer(): looking for %s in %s", fname, c.NName())
+func getNodeFromNotification(n *yang.Notification, fname string, leaf bool) yang.Node {
+	debuglog("getNodeFromContainer(): looking for %s in %s", fname, n.NName())
 	name := getName(fname)
-	for _, c1 := range c.Container {
+	for _, c1 := range n.Container {
 		if c1.NName() == name {
 			return c1
 		}
 	}
-	for _, l1 := range c.Leaf {
+	for _, l1 := range n.Leaf {
 		if l1.NName() == name {
 			return l1
 		}
 	}
-	for _, l1 := range c.List {
+	for _, l1 := range n.List {
 		if l1.NName() == name {
 			return l1
 		}
 	}
-	for _, c1 := range c.Choice {
+	for _, c1 := range n.Choice {
 		if c1.NName() == name {
 			return c1
 		}
 	}
-	for _, u1 := range c.Uses {
+	for _, u1 := range n.Uses {
 		if node := getNodeFromUses(u1, name); node != nil {
 			return node
 		}
@@ -119,36 +121,31 @@ func getNodeFromContainer(c *yang.Container, fname string, leaf bool) yang.Node 
 // This function attempts to locate a uses node within the container recursively
 // till it finds a uses node whic uses the same string as passed above.
 // TODO: prefix handling must be properly handled
-func getMatchingUsesNodeFromContainer(c *yang.Container, name string) yang.Node {
-	for _, u1 := range c.Uses {
+func getMatchingUsesNodeFromNotification(n *yang.Notification, name string) yang.Node {
+	for _, u1 := range n.Uses {
 		uname := getName(u1.NName())
 		iname := getName(name)
 		if uname == iname {
-			return c
+			return n
 		}
 	}
-	for _, g1 := range c.Grouping {
+	for _, g1 := range n.Grouping {
 		if n := getMatchingUsesNodeFromGrouping(g1, name); n != nil {
 			return n
 		}
 	}
-	for _, c1 := range c.Container {
+	for _, c1 := range n.Container {
 		if n := getMatchingUsesNodeFromContainer(c1, name); n != nil {
 			return n
 		}
 	}
-	for _, l1 := range c.List {
+	for _, l1 := range n.List {
 		if n := getMatchingUsesNodeFromList(l1, name); n != nil {
 			return n
 		}
 	}
-	for _, c1 := range c.Choice {
+	for _, c1 := range n.Choice {
 		if n := getMatchingUsesNodeFromChoice(c1, name); n != nil {
-			return n
-		}
-	}
-	for _, n1 := range c.Notification {
-		if n := getMatchingUsesNodeFromNotification(n1, name); n != nil {
 			return n
 		}
 	}

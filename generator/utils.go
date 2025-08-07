@@ -461,7 +461,13 @@ func getNextNodeByName(node yang.Node, name string, leaf bool) yang.Node {
 		return getNodeFromContainer(node.(*yang.Container), name, false)
 	case "list":
 		return getNodeFromList(node.(*yang.List), name, false)
-	case "module":
+	case "choice":
+		return getNodeFromChoice(node.(*yang.Choice), name, false)
+	case "case":
+		return getNodeFromCase(node.(*yang.Case), name, false)
+	case "notification":
+		return getNodeFromNotification(node.(*yang.Notification), name, false)
+	case "module", "submodule":
 		return getNodeFromMod(mod, name)
 	}
 	errorlog("getNextNodeByName(): %s.%s isn't a container type node", node.NName(), node.Kind())
@@ -480,6 +486,11 @@ func getNodeFromMod(mod *Module, name string) yang.Node {
 		for _, u1 := range ymod.Uses {
 			if n := getNodeFromUses(u1, name); n != nil {
 				return n
+			}
+		}
+		for _, c1 := range ymod.Container {
+			if c1.NName() == name {
+				return c1
 			}
 		}
 	}

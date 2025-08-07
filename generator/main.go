@@ -9,7 +9,7 @@ import (
 	"github.com/pborman/getopt"
 )
 
-var modules = []string {
+var ocmodules = []string {
 	"openconfig-extensions",
 	"openconfig-types",
 	"openconfig-platform-types",
@@ -175,7 +175,76 @@ var modules = []string {
 	"openconfig-isis-policy",
 	"openconfig-spanning-tree",
 	"openconfig-ate-intf",
-	"openconfig-ate-flow", }
+	"openconfig-ate-flow",
+}
+
+var bbfponmodules = []string {
+	"bbf-inet-types",
+	"bbf-subscriber-types",
+	"bbf-yang-types",
+	"bbf-xpon-onu-types",
+	"bbf-xpon-defects",
+	"bbf-xpon-onu-authentication-types",
+	"ietf-inet-types",
+	"bbf-xpon-power-management",
+	"bbf-frame-processing-types",
+	"bbf-qos-policing-types",
+	"bbf-xpongemtcont",
+	"bbf-xpon",
+	"bbf-xponani",
+	"iana-hardware",
+	"bbf-device-types",
+	"bbf-xponvani",
+	"bbf-qos-types",
+	"bbf-xpon-onu-authentication-features",
+	"ietf-yang-types",
+	"bbf-dot1q-types",
+	"bbf-node-types",
+	"bbf-frame-processing",
+	"bbf-l2-dhcpv4-relay-profile-common",
+	"bbf-xpon-types",
+	"bbf-hardware-types",
+	"bbf-xponvani-onu-authentication-groupings",
+	"ietf-hardware",
+	"ietf-interfaces",
+	"bbf-frame-editing",
+	"bbf-frame-classification",
+	"bbf-device",
+	"bbf-hardware-types-xpon",
+	"bbf-hardware-transceivers",
+	"ietf-hardware-state",
+	"bbf-qos-traffic-mngt",
+	"bbf-qos-policies-state",
+	"bbf-link-table",
+	"bbf-xponvani-onu-authentication",
+	"bbf-hardware",
+	"iana-if-type",
+	"bbf-xpon-burst-profiles",
+	"bbf-xponvani-power-management",
+	"bbf-xponani-power-management",
+	"bbf-xpon-onu-state",
+	"bbf-qos-classifiers",
+	"me-inventory",
+	"bbf-hardware-transceivers-xpon",
+	"bbf-xpongemtcont-qos",
+	"bbf-if-type",
+	"bbf-vlan-sub-interface-profiles",
+	"bbf-interface-usage",
+	"bbf-qos-policies",
+	"bbf-l2-dhcpv4-relay",
+	"bbf-sub-interfaces",
+	"bbf-xpon-if-type",
+	"bbf-vlan-sub-interface-profile-fp",
+	"bbf-vlan-sub-interface-profile-usage",
+	"bbf-qos-policing",
+	"bbf-qos-policies-sub-interface-rewrite",
+	"bbf-sub-interface-tagging",
+	"bbf-xpon-onu-authentication",
+	"bbf-qos-policer-envelope-profiles",
+	"bbf-qos-policing-state",
+	"bbf-frame-processing-profiles",
+	"bbf-qos-policies-sub-interfaces",
+}
 
 var modulename string
 // Read the files from the directory
@@ -247,45 +316,48 @@ func main() {
 	}
 	// Add all the modules parsed
 	addModules(ms)
+	graph, inDegree, err := BuildGraph(modulesByName)
+	if err != nil {
+		fmt.Println("Error generating graph:", err)
+		return
+	}
+	order, err := TopologicalSort(graph, inDegree)
+	if err != nil {
+		fmt.Println("Error in sort:", err)
+	}
+	//for id, name := range order {
+	//	fmt.Println(id, ":", name)
+	//}
 
 	// We have two steps in the overall processing of the modules which will
 	// translate the modules to code. The first step is preprocess which attempts
 	// to process some identities (mostly augments) that are to be used during
 	// generation.
-	for _, mod := range modules {
+	for _, mod := range order {
 		m, ok := modulesByName[mod]
 		if ok {
 			fmt.Println("Preprocessing module", mod, "....")
 			m.preprocessModule()
 		} else {
-			fmt.Println("Didn't find module")
+			fmt.Println("Didn't find module", mod)
 		}
 	}
-	/*
-	for _, m := range modulesByName {
-		fmt.Println("Preprocessing module", m.name, "....")
-		m.preprocessModule()
-	}
-	*/
 
 	// This generates the structure that describes the device based on yang
 	// files included in the generation.
-	generateMain(outdir)
+	//generateMain(outdir)
 
 
 	// Now generate code for each module. We generate a .go file for each
 	// yang module
-	fmt.Println("******        Start of processing of modules        ********")
-	for _, m := range modulesByName {
-		processModule(m, outdir)
-	}
-	/*
-	m := modulesByName["openconfig-policy-types"]
-	processModule(m, outdir)
-	*/
-	/*
-        if apiIndir != "" {
-                processStructsAndApis(apiIndir, outdir)
-        }
-	*/
+	//fmt.Println("******        Start of processing of modules        ********")
+	//for _, m := range modulesByName {
+	//	processModule(m, outdir)
+	//}
+	//m := modulesByName["openconfig-policy-types"]
+	//processModule(m, outdir)
+	
+        //if apiIndir != "" {
+	//	processStructsAndApis(apiIndir, outdir)
+	//}
 }

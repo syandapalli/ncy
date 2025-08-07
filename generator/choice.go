@@ -7,7 +7,7 @@ import (
 	"github.com/openconfig/goyang/pkg/yang"
 )
 
-func addContainerComment(w io.Writer, c *yang.Container) {
+func addChoiceComment(w io.Writer, c *yang.Container) {
 	fmt.Fprintln(w, "//------------------------------------------------------------")
 	fmt.Fprint(w, "//  Name:\n")
 	s := indentString(c.NName())
@@ -20,12 +20,13 @@ func addContainerComment(w io.Writer, c *yang.Container) {
 	fmt.Fprintln(w, "//-------------------------------------------------------------")
 }
 
-func genTypeForContainer(w io.Writer, ymod *yang.Module, n yang.Node, keepXmlID bool) {
+func genTypeForChoice(w io.Writer, ymod *yang.Module, n yang.Node, keepXmlID bool) {
+	/*
 	var name string
 	var addNs bool = false
-	c, ok := n.(*yang.Container)
+	c, ok := n.(*yang.Choice)
 	if !ok {
-		panic("Not a Container")
+		panic("Not a Choice")
 	}
 
 	addContainerComment(w, c)
@@ -77,16 +78,17 @@ func genTypeForContainer(w io.Writer, ymod *yang.Module, n yang.Node, keepXmlID 
 			generateType(w, ymod, l1, false)
 		}
 	}
+	*/
 }
 
-func generateContainerRuntimeNs(w io.Writer, mod *Module, ymod *yang.Module, name string) {
-	fmt.Fprintf(w, "func (x %s_cont) RuntimeNs() string {\n", genTN(ymod, name))
+func generateChoiceRuntimeNs(w io.Writer, mod *Module, ymod *yang.Module, name string) {
+	fmt.Fprintf(w, "func (x %s) RuntimeNs() string {\n", genTN(ymod, name))
 	fmt.Fprintf(w, "\treturn %s_ns\n", genFN(mod.name))
 	fmt.Fprintf(w, "}\n")
 }
 
-func getNodeFromContainer(c *yang.Container, fname string, leaf bool) yang.Node {
-	debuglog("getNodeFromContainer(): looking for %s in %s", fname, c.NName())
+func getNodeFromChoice(c *yang.Choice, fname string, leaf bool) yang.Node {
+	debuglog("getNodeFromChoice(): looking for %s in %s", fname, c.NName())
 	name := getName(fname)
 	for _, c1 := range c.Container {
 		if c1.NName() == name {
@@ -103,9 +105,31 @@ func getNodeFromContainer(c *yang.Container, fname string, leaf bool) yang.Node 
 			return l1
 		}
 	}
-	for _, c1 := range c.Choice {
+	for _, c1 := range c.Case {
 		if c1.NName() == name {
 			return c1
+		}
+	}
+	errorlog("getNodeFromChoice(): failed to find %s in %s.%s", name, c.NName(), c.Kind())
+	return nil
+}
+
+func getNodeFromCase(c *yang.Case, fname string, leaf bool) yang.Node {
+	debuglog("getNodeFromCase(): looking for %s in %s", fname, c.NName())
+	name := getName(fname)
+	for _, c1 := range c.Container {
+		if c1.NName() == name {
+			return c1
+		}
+	}
+	for _, l1 := range c.Leaf {
+		if l1.NName() == name {
+			return l1
+		}
+	}
+	for _, l1 := range c.List {
+		if l1.NName() == name {
+			return l1
 		}
 	}
 	for _, u1 := range c.Uses {
@@ -113,25 +137,35 @@ func getNodeFromContainer(c *yang.Container, fname string, leaf bool) yang.Node 
 			return node
 		}
 	}
+	errorlog("getNodeFromCase(): failed to find %s in %s.%s", name, c.NName(), c.Kind())
 	return nil
 }
 
 // This function attempts to locate a uses node within the container recursively
 // till it finds a uses node whic uses the same string as passed above.
 // TODO: prefix handling must be properly handled
-func getMatchingUsesNodeFromContainer(c *yang.Container, name string) yang.Node {
-	for _, u1 := range c.Uses {
-		uname := getName(u1.NName())
-		iname := getName(name)
-		if uname == iname {
-			return c
-		}
-	}
-	for _, g1 := range c.Grouping {
-		if n := getMatchingUsesNodeFromGrouping(g1, name); n != nil {
+func getMatchingUsesNodeFromChoice(c *yang.Choice, name string) yang.Node {
+	debuglog("getMatchingUsesNodeFromChoice(): looking for %s in %s.%s", name, c.NName(), c.Kind())
+	for _, c1 := range c.Container {
+		if n := getMatchingUsesNodeFromContainer(c1, name); n != nil {
 			return n
 		}
 	}
+	for _, l1 := range c.List {
+		if n := getMatchingUsesNodeFromList(l1, name); n != nil {
+			return n
+		}
+	}
+	for _, c1 := range c.Case {
+		if n := getMatchingUsesNodeFromCase(c1, name); n != nil {
+			return n
+		}
+	}
+	return nil
+}
+
+func getMatchingUsesNodeFromCase(c *yang.Case, name string) yang.Node {
+	debuglog("getMatchingUsesNodeFromCase(): looking for %s in %s.%s", name, c.NName(), c.Kind())
 	for _, c1 := range c.Container {
 		if n := getMatchingUsesNodeFromContainer(c1, name); n != nil {
 			return n
@@ -144,11 +178,6 @@ func getMatchingUsesNodeFromContainer(c *yang.Container, name string) yang.Node 
 	}
 	for _, c1 := range c.Choice {
 		if n := getMatchingUsesNodeFromChoice(c1, name); n != nil {
-			return n
-		}
-	}
-	for _, n1 := range c.Notification {
-		if n := getMatchingUsesNodeFromNotification(n1, name); n != nil {
 			return n
 		}
 	}

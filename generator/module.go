@@ -53,6 +53,7 @@ type Module struct {
 	imports                 map[string]string
 	identities              map[string]*yang.Identity
 	submodules              map[string]*SubModule
+	module                  *yang.Module
 }
 
 // Constructor for structure Module
@@ -65,6 +66,7 @@ func NewModule(m *yang.Module) *Module {
 	mod.submodules = make(map[string]*SubModule)
 	mod.namespace = m.Namespace.Name
 	mod.prefix = m.Prefix.Name
+	mod.module = m
 
 	// Add the module also as a submodule which is used
 	// for any processing related to generation of code
@@ -256,6 +258,25 @@ func addFileComments(w io.Writer, ymod *yang.Module) {
 		fmt.Fprint(w, s)
 	}
 	fmt.Fprintln(w, "//-------------------------------------------------------------")
+}
+
+func addImport(is []string, i string) []string {
+	for _, i1 := range is {
+		if i1 == i {
+			return is
+		}
+	}
+	return append(is, i)
+}
+
+func getImports(mod *Module) []string {
+	var imports = []string{}
+	for _, sm := range mod.submodules {
+		for _, i := range sm.module.Import {
+			imports = addImport(imports, i.NName())
+		}
+	}
+	return imports
 }
 
 // Process the main module and its submodules

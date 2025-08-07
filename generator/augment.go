@@ -30,6 +30,30 @@ func addLeaf(l *yang.Leaf, ls []*yang.Leaf) []*yang.Leaf {
 	}
 	return append(ls, l)
 }
+func addChoice(c *yang.Choice, cs []*yang.Choice) []*yang.Choice {
+	for _, x := range cs {
+		if x == c {
+			return cs
+		}
+	}
+	return append(cs, c)
+}
+func addNotification(n *yang.Notification, ns []*yang.Notification) []*yang.Notification {
+	for _, x := range ns {
+		if x == n {
+			return ns
+		}
+	}
+	return append(ns, n)
+}
+func addCase(c *yang.Case, cs []*yang.Case) []*yang.Case {
+	for _, x := range cs {
+		if x == c {
+			return cs
+		}
+	}
+	return append(cs, c)
+}
 
 func addAugmentToContainer(a *yang.Augment, n yang.Node) {
 	debuglog("addAugmentsToContainer(): adding %s to %s.%s", a.NName(), n.NName(), n.Kind())
@@ -38,10 +62,16 @@ func addAugmentToContainer(a *yang.Augment, n yang.Node) {
 		errorlog("addAugmentToContainer(): %s.%s is not a container", n.NName(), n.Kind())
 	}
 	for _, c1 := range a.Container {
-		c.Container = append(c.Container, c1)
+		c.Container = addContainer(c1, c.Container) 
 	}
 	for _, l1 := range a.Leaf {
-		c.Leaf = append(c.Leaf, l1)
+		c.Leaf = addLeaf(l1, c.Leaf)
+	}
+	for _, c1 := range a.Choice {
+		c.Choice = addChoice(c1, c.Choice)
+	}
+	for _, n1 := range a.Notification {
+		c.Notification = addNotification(n1, c.Notification)
 	}
 	for _, u1 := range a.Uses {
 		g := getGroupingByName(u1)
@@ -51,16 +81,16 @@ func addAugmentToContainer(a *yang.Augment, n yang.Node) {
 		}
 		for _, c1 := range g.Container {
 			c.Container = addContainer(c1, c.Container)
-			//c.Container = append(c.Container, c1)
 		}
 		for _, l1 := range g.List {
 			c.List = addList(l1, c.List)
-			//c.List = append(c.List, l1)
 		}
 		for _, l1 := range g.Leaf {
 			c.Leaf = addLeaf(l1, c.Leaf)
-			//c.Leaf = append(c.Leaf, l1)
 		}
+	}
+	for _, c1 := range a.Choice {
+		c.Choice = addChoice(c1, c.Choice)
 	}
 }
 
@@ -71,10 +101,19 @@ func addAugmentToList(a *yang.Augment, n yang.Node) {
 		errorlog("addAugmentToList(): %s.%s is not a list", n.NName(), n.Kind())
 	}
 	for _, c1 := range a.Container {
-		l.Container = append(l.Container, c1)
+		l.Container = addContainer(c1, l.Container)
 	}
 	for _, l1 := range a.Leaf {
-		l.Leaf = append(l.Leaf, l1)
+		l.Leaf = addLeaf(l1, l.Leaf)
+	}
+	for _, l1 := range a.List {
+		l.List = addList(l1, l.List)
+	}
+	for _, c1 := range a.Choice {
+		l.Choice = addChoice(c1, l.Choice)
+	}
+	for _, n1 := range a.Notification {
+		l.Notification = addNotification(n1, l.Notification)
 	}
 	for _, u1 := range a.Uses {
 		g := getGroupingByName(u1)
@@ -97,6 +136,114 @@ func addAugmentToList(a *yang.Augment, n yang.Node) {
 	}
 }
 
+func addAugmentToNotification(a *yang.Augment, n yang.Node) {
+	debuglog("addAugmentToNotification(): adding %s to %s.%s", a.NName(), n.NName(), n.Kind())
+	nt, ok := n.(*yang.Notification)
+	if !ok {
+		errorlog("addAugmentToList(): %s.%s is not a list", n.NName(), n.Kind())
+	}
+	for _, c1 := range a.Container {
+		nt.Container = addContainer(c1, nt.Container)
+	}
+	for _, l1 := range a.Leaf {
+		nt.Leaf = addLeaf(l1, nt.Leaf)
+	}
+	for _, l1 := range a.List {
+		nt.List = addList(l1, nt.List)
+	}
+	for _, c1 := range a.Choice {
+		nt.Choice = addChoice(c1, nt.Choice)
+	}
+	for _, u1 := range a.Uses {
+		g := getGroupingByName(u1)
+		if g == nil {
+			errorlog("addAugmentToList(): couldn't locate grouping %s", u1.NName())
+			continue
+		}
+		for _, c1 := range g.Container {
+			nt.Container = addContainer(c1, nt.Container)
+		}
+		for _, l1 := range g.List {
+			nt.List = addList(l1, nt.List)
+		}
+		for _, l1 := range g.Leaf {
+			nt.Leaf = addLeaf(l1, nt.Leaf)
+		}
+	}
+}
+
+func addAugmentToChoice(a *yang.Augment, n yang.Node) {
+	debuglog("addAugmentToChoice(): adding %s to %s.%s", a.NName(), n.NName(), n.Kind())
+	c, ok := n.(*yang.Choice)
+	if !ok {
+		errorlog("addAugmentToList(): %s.%s is not a choice", n.NName(), n.Kind())
+	}
+	for _, c1 := range a.Container {
+		c.Container = addContainer(c1, c.Container)
+	}
+	for _, l1 := range a.Leaf {
+		c.Leaf = addLeaf(l1, c.Leaf)
+	}
+	for _, l1 := range a.List {
+		c.List = addList(l1, c.List)
+	}
+	for _, c1 := range a.Case {
+		c.Case = addCase(c1, c.Case)
+	}
+	for _, u1 := range a.Uses {
+		g := getGroupingByName(u1)
+		if g == nil {
+			errorlog("addAugmentToList(): couldn't locate grouping %s", u1.NName())
+			continue
+		}
+		for _, c1 := range g.Container {
+			c.Container = addContainer(c1, c.Container)
+		}
+		for _, l1 := range g.List {
+			c.List = addList(l1, c.List)
+		}
+		for _, l1 := range g.Leaf {
+			c.Leaf = addLeaf(l1, c.Leaf)
+		}
+	}
+}
+
+func addAugmentToCase(a *yang.Augment, n yang.Node) {
+	debuglog("addAugmentToChoice(): adding %s to %s.%s", a.NName(), n.NName(), n.Kind())
+	c, ok := n.(*yang.Case)
+	if !ok {
+		errorlog("addAugmentToList(): %s.%s is not a case", n.NName(), n.Kind())
+	}
+	for _, c1 := range a.Container {
+		c.Container = addContainer(c1, c.Container)
+	}
+	for _, l1 := range a.Leaf {
+		c.Leaf = addLeaf(l1, c.Leaf)
+	}
+	for _, l1 := range a.List {
+		c.List = addList(l1, c.List)
+	}
+	for _, c1 := range a.Choice {
+		c.Choice = addChoice(c1, c.Choice)
+	}
+	for _, u1 := range a.Uses {
+		g := getGroupingByName(u1)
+		if g == nil {
+			errorlog("addAugmentToList(): couldn't locate grouping %s", u1.NName())
+			continue
+		}
+		for _, c1 := range g.Container {
+			c.Container = addContainer(c1, c.Container)
+		}
+		for _, l1 := range g.List {
+			c.List = addList(l1, c.List)
+		}
+		for _, l1 := range g.Leaf {
+			c.Leaf = addLeaf(l1, c.Leaf)
+		}
+	}
+}
+
 func (mod *Module) preprocessAugment(aug *yang.Augment) {
 	debuglog("preprocessAugment(): name=%s in module %s", aug.Name, mod.name)
 	// Let's locate the position of the augment within the other module
@@ -109,6 +256,10 @@ func (mod *Module) preprocessAugment(aug *yang.Augment) {
 			addAugmentToContainer(aug, node)
 		case "list":
 			addAugmentToList(aug, node)
+		case "choice":
+			addAugmentToChoice(aug, node)
+		case "notification":
+			addAugmentToNotification(aug, node)
 		default:
 			errorlog("preprocessAugment(): addition to %s.%s not supported", node.NName(), node.Kind())
 		}
@@ -118,7 +269,12 @@ func (mod *Module) preprocessAugment(aug *yang.Augment) {
 }
 
 func (mod *Module) preprocessAugments() {
-	for _, sm := range mod.submodules {
+	for _, inc := range mod.module.Include {
+		sm, ok := mod.submodules[inc.NName()]
+		if !ok {
+			errorlog("preprocessAugments(): couldn't find submodule %s", inc.NName())
+			continue
+		}
 		ymod := sm.module
 		for _, aug := range ymod.Augment {
 			mod.preprocessAugment(aug)
