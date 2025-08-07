@@ -36,7 +36,7 @@ func generateTypeDef(w io.Writer, m *yang.Module, id *yang.Identity) {
 	// the data structure to store the tree
 	addIdentityComment(w, id)
 	tn := genTN(m, id.Name)
-	fmt.Fprintf(w, "type %s string\n", tn)
+	fmt.Fprintf(w, "type %s_id string\n", tn)
 	fmt.Fprintf(w, "var %s_prefix_map = map[string]string{}\n", tn)
 	fmt.Fprintf(w, "var %s_ns_map = map[string]string{}\n", tn)
 

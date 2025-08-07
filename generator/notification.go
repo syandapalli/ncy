@@ -1,91 +1,89 @@
 package main
 
 import (
-	//"fmt"
-	//"io"
+	"fmt"
+	"io"
 
 	"github.com/openconfig/goyang/pkg/yang"
 )
 
-/*
-func addContainerComment(w io.Writer, c *yang.Container) {
+func addNotificationComment(w io.Writer, n *yang.Notification) {
 	fmt.Fprintln(w, "//------------------------------------------------------------")
 	fmt.Fprint(w, "//  Name:\n")
-	s := indentString(c.NName())
+	s := indentString(n.NName())
 	s = commentString(s)
 	fmt.Fprint(w, s)
 	fmt.Fprint(w, "//  Description:\n")
-	s = indentString(c.Description.Name)
+	s = indentString(n.Description.Name)
 	s = commentString(s)
 	fmt.Fprint(w, s)
 	fmt.Fprintln(w, "//-------------------------------------------------------------")
 }
 
-func genTypeForContainer(w io.Writer, ymod *yang.Module, n yang.Node, keepXmlID bool) {
+func genTypeForNotification(w io.Writer, ymod *yang.Module, n yang.Node, keepXmlID bool) {
 	var name string
 	var addNs bool = false
-	c, ok := n.(*yang.Container)
+	notif, ok := n.(*yang.Notification)
 	if !ok {
 		panic("Not a Container")
 	}
 
-	addContainerComment(w, c)
-	if c.ParentNode().Kind() != "augment" {
-		name = fullName(c)
+	addNotificationComment(w, notif)
+	if notif.ParentNode().Kind() != "augment" {
+		name = fullName(notif)
 	} else {
-		name = c.NName()
+		name = notif.NName()
 	}
 	fmt.Fprintf(w, "type %s_cont struct {\n", genTN(ymod, name))
 	if keepXmlID {
 		mod := getMyModule(ymod)
-		fmt.Fprintf(w, "\tXMLName nc.XmlId `xml:\"%s %s\"`\n", mod.namespace, c.Name)
+		fmt.Fprintf(w, "\tXMLName nc.XmlId `xml:\"%s %s\"`\n", mod.namespace, notif.Name)
 	}
-	for _, c1 := range c.Container {
+	for _, c1 := range notif.Container {
 		generateField(w, ymod, c1, addNs)
 	}
-	for _, l1 := range c.Leaf {
+	for _, l1 := range notif.Leaf {
 		generateField(w, ymod, l1, addNs)
 	}
-	for _, g1 := range c.Grouping {
+	for _, g1 := range notif.Grouping {
 		generateField(w, ymod, g1, addNs)
 	}
-	for _, l1 := range c.List {
+	for _, l1 := range notif.List {
 		generateField(w, ymod, l1, addNs)
 	}
-	for _, u1 := range c.Uses {
+	for _, u1 := range notif.Uses {
 		generateField(w, ymod, u1, addNs)
 	}
 	fmt.Fprintf(w, "}\n")
 
 	// Generate runtime namespace function
-	mod := getMyModule(c)
+	mod := getMyModule(notif)
 	generateContainerRuntimeNs(w, mod, ymod, name)
 
 	// The code below triggers the code generation for the
 	// constituents of the grouping
-	for _, c1 := range c.Container {
-		if c1.ParentNode() == c {
+	for _, c1 := range notif.Container {
+		if c1.ParentNode() == notif {
 			generateType(w, ymod, c1, false)
 		}
 	}
-	for _, l1 := range c.Leaf {
-		if l1.ParentNode() == c {
+	for _, l1 := range notif.Leaf {
+		if l1.ParentNode() == notif {
 			generateType(w, ymod, l1, false)
 		}
 	}
-	for _, l1 := range c.List {
-		if l1.ParentNode() == c {
+	for _, l1 := range notif.List {
+		if l1.ParentNode() == notif {
 			generateType(w, ymod, l1, false)
 		}
 	}
 }
 
-func generateContainerRuntimeNs(w io.Writer, mod *Module, ymod *yang.Module, name string) {
-	fmt.Fprintf(w, "func (x %s_cont) RuntimeNs() string {\n", genTN(ymod, name))
+func generateNotificationrRuntimeNs(w io.Writer, mod *Module, ymod *yang.Module, name string) {
+	fmt.Fprintf(w, "func (x %s) RuntimeNs() string {\n", genTN(ymod, name))
 	fmt.Fprintf(w, "\treturn %s_ns\n", genFN(mod.name))
 	fmt.Fprintf(w, "}\n")
 }
-*/
 
 func getNodeFromNotification(n *yang.Notification, fname string, leaf bool) yang.Node {
 	debuglog("getNodeFromContainer(): looking for %s in %s", fname, n.NName())

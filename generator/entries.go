@@ -27,6 +27,30 @@ func generateField(w io.Writer, ymod *yang.Module, node yang.Node, addNs bool) {
 		tn := fullName(c)
 		fmt.Fprintf(w, "\t%s_Prsnt bool `xml:\",presfield\"`\n", genFN(fieldname))
 		fmt.Fprintf(w, "\t%s %s_cont `xml:\"%s%s\"`\n", genFN(fieldname), genTN(ymod, tn), nsstr, fieldname)
+	case "notification":
+		notif, ok := node.(*yang.Notification)
+		if !ok {
+			errorlog("generateField(): %s.%s not a notification", node.NName(), node.Kind())
+		}
+		tn := fullName(notif)
+		fmt.Fprintf(w, "\t%s_Prsnt bool `xml:\",presfield\"`\n", genFN(fieldname))
+		fmt.Fprintf(w, "\t%s %s_cont `xml:\"%s%s\"`\n", genFN(fieldname), genTN(ymod, tn), nsstr, fieldname)
+	case "choice":
+		choice, ok := node.(*yang.Choice)
+		if !ok {
+			errorlog("generateField(): %s.%s not a notification", node.NName(), node.Kind())
+		}
+		tn := fullName(choice)
+		fmt.Fprintf(w, "\t%s_Prsnt bool `xml:\",presfield\"`\n", genFN(fieldname))
+		fmt.Fprintf(w, "\t%s %s `xml:\"%s%s\"`\n", genFN(fieldname), genTN(ymod, tn), nsstr, fieldname)
+	case "case":
+		case1, ok := node.(*yang.Case)
+		if !ok {
+			errorlog("generateField(): %s.%s not a notification", node.NName(), node.Kind())
+		}
+		tn := fullName(case1)
+		fmt.Fprintf(w, "\t%s_Prsnt bool `xml:\",presfield\"`\n", genFN(fieldname))
+		fmt.Fprintf(w, "\t%s %s `xml:\"%s%s\"`\n", genFN(fieldname), genTN(ymod, tn), nsstr, fieldname)
 	case "leaf":
 		l, ok := node.(*yang.Leaf)
 		if !ok {
@@ -89,6 +113,12 @@ func generateType(w io.Writer, ymod *yang.Module, node yang.Node, keepXmlID bool
 		genTypeForLeaf(w, ymod, node)
 	case "leaf-list":
 		genTypeForLeafList(w, ymod, node)
+	case "choice":
+		genTypeForChoice(w, ymod, node, keepXmlID)
+	case "case":
+		genTypeForCase(w, ymod, node, keepXmlID)
+	default:
+		errorlog("generateType(): %s.%s is not yet supported", node.NName(), node.Kind())
 	}
 }
 

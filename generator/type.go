@@ -243,7 +243,8 @@ func processUintType(w io.Writer, m *yang.Module, t *yang.Type) {
 		rangestr := t.Range.Name
 		parts = strings.Split(rangestr, "..")
 		if len(parts) != 2 {
-			panic("Range without two values: " + rangestr)
+			errorlog("processUintType(): Range without two values: %s in %s.%s", t.Range.Name, t.NName(), t.Kind())
+			return
 		}
 	}
 
@@ -651,7 +652,7 @@ func processIdentityRef(w io.Writer, m *yang.Module, t *yang.Type) {
 	}
 	otn := getTypeName(m, t)
 	itn := genTN(m, fullName(p))
-	fmt.Fprintf(w, "type %s %s\n", itn, otn)
+	fmt.Fprintf(w, "type %s %s_id\n", itn, otn)
 	// Generate the marshal code
 	fmt.Fprintf(w, "func (x %s)MarshalText(ns string) ([]byte, error) {\n", itn)
 	fmt.Fprintf(w, "\treturn %s(x).MarshalText(ns)\n", otn)

@@ -51,6 +51,12 @@ func genTypeForContainer(w io.Writer, ymod *yang.Module, n yang.Node, keepXmlID 
 	for _, l1 := range c.List {
 		generateField(w, ymod, l1, addNs)
 	}
+	for _, n1 := range c.Notification {
+		generateField(w, ymod, n1, addNs)
+	}
+	for _, c1 := range c.Choice {
+		generateField(w, ymod, c1, addNs)
+	}
 	for _, u1 := range c.Uses {
 		generateField(w, ymod, u1, addNs)
 	}
@@ -62,19 +68,29 @@ func genTypeForContainer(w io.Writer, ymod *yang.Module, n yang.Node, keepXmlID 
 
 	// The code below triggers the code generation for the
 	// constituents of the grouping
-	for _, c1 := range c.Container {
-		if c1.ParentNode() == c {
-			generateType(w, ymod, c1, false)
+	for _, cont := range c.Container {
+		if cont.ParentNode() == c {
+			generateType(w, ymod, cont, false)
 		}
 	}
-	for _, l1 := range c.Leaf {
-		if l1.ParentNode() == c {
-			generateType(w, ymod, l1, false)
+	for _, leaf := range c.Leaf {
+		if leaf.ParentNode() == c {
+			generateType(w, ymod, leaf, false)
 		}
 	}
-	for _, l1 := range c.List {
-		if l1.ParentNode() == c {
-			generateType(w, ymod, l1, false)
+	for _, list := range c.List {
+		if list.ParentNode() == c {
+			generateType(w, ymod, list, false)
+		}
+	}
+	for _, notif := range c.Notification {
+		if notif.ParentNode() == c {
+			generateType(w, ymod, notif, false)
+		}
+	}
+	for _, choice := range c.Choice {
+		if choice.ParentNode() == c {
+			generateType(w, ymod, choice, false)
 		}
 	}
 }

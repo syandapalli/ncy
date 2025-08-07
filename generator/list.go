@@ -32,6 +32,12 @@ func genTypeForList(w io.Writer, m *yang.Module, n yang.Node) {
 	for _, l1 := range l.List {
 		generateField(w, m, l1, addNs)
 	}
+	for _, n1 := range l.Notification {
+		generateField(w, m, n1, addNs)
+	}
+	for _, c1 := range l.Choice {
+		generateField(w, m, c1, addNs)
+	}
 	for _, u1 := range l.Uses {
 		generateField(w, m, u1, addNs)
 	}
@@ -39,19 +45,29 @@ func genTypeForList(w io.Writer, m *yang.Module, n yang.Node) {
 
 	// The code below generates the type definitions needed
 	// for the constituents inside a list
-	for _, c1 := range l.Container {
-		if c1.ParentNode() == l {
-			generateType(w, m, c1, false)
+	for _, cont := range l.Container {
+		if cont.ParentNode() == l {
+			generateType(w, m, cont, false)
 		}
 	}
-	for _, l1 := range l.Leaf {
-		if l1.ParentNode() == l {
-			generateType(w, m, l1, false)
+	for _, leaf := range l.Leaf {
+		if leaf.ParentNode() == l {
+			generateType(w, m, leaf, false)
 		}
 	}
-	for _, l1 := range l.List {
-		if l1.ParentNode() == l {
-			generateType(w, m, l1, false)
+	for _, list := range l.List {
+		if list.ParentNode() == l {
+			generateType(w, m, list, false)
+		}
+	}
+	for _, notif := range l.Notification {
+		if notif.ParentNode() == l {
+			generateType(w, m, notif, false)
+		}
+	}
+	for _, choice := range l.Choice {
+		if choice.ParentNode() == l {
+			generateType(w, m, choice, false)
 		}
 	}
 }

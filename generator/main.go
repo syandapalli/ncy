@@ -350,10 +350,10 @@ func main() {
 
 	// Now generate code for each module. We generate a .go file for each
 	// yang module
-	//fmt.Println("******        Start of processing of modules        ********")
-	//for _, m := range modulesByName {
-	//	processModule(m, outdir)
-	//}
+	fmt.Println("******        Start of processing of modules        ********")
+	for _, m := range modulesByName {
+		processModule(m, outdir)
+	}
 	//m := modulesByName["openconfig-policy-types"]
 	//processModule(m, outdir)
 	

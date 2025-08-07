@@ -82,6 +82,16 @@ func processGrouping(w io.Writer, submod *SubModule, ymod *yang.Module, n yang.N
 			generateType(w, ymod, l1, addNs)
 		}
 	}
+	for _, notif := range g.Notification {
+		if notif.ParentNode() == g {
+			generateType(w, ymod, notif, false)
+		}
+	}
+	for _, choice := range g.Choice {
+		if choice.ParentNode() == g {
+			generateType(w, ymod, choice, false)
+		}
+	}
 	fmt.Fprintf(w, "\n")
 
 	//storeInGroupingMap(submod.prefix, n)

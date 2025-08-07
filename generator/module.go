@@ -222,12 +222,14 @@ func fileHeader(mod *Module, submod *SubModule, w io.Writer, keepXmlID bool) {
 	// Revision is needed independently for both submodules and main module
 	// and must be generated outside the earlier check
 	if submod.mtype == TypeModule {
-		revision := submod.module.Revision[0].Name
-		fmt.Fprintf(w, "var %s_capability = \"%s?module=%s&revision=%s\"\n", modname, mod.namespace, mod.name, revision)
+		if len(submod.module.Revision) > 0 {
+			revision := submod.module.Revision[0].Name
+			fmt.Fprintf(w, "var %s_capability = \"%s?module=%s&revision=%s\"\n", modname, mod.namespace, mod.name, revision)
+			fmt.Fprintf(w, "var %s_revision = \"%s\"\n", submodname, submod.module.Revision[0].Name)
+		}
 	} else {
 		//fmt.Fprintf(w, "var %s_capability = \"%s?\"\n", submodname, mod.namespace)
 	}
-	fmt.Fprintf(w, "var %s_revision = \"%s\"\n", submodname, submod.module.Revision[0].Name)
 	// Generate the dummy usage for all the common import packages so that
 	// we don't have to carefully identify which of them to be included
 	fmt.Fprintf(w, "\n//-----------------------------------------------------\n")
