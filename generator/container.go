@@ -7,6 +7,9 @@ import (
 	"github.com/openconfig/goyang/pkg/yang"
 )
 
+// Generate comments for the structure that is generated for the container
+// The comments include information that may be used during debugging too and
+// used by developers to understand the source of the generated code
 func addContainerComment(w io.Writer, c *yang.Container) {
 	fmt.Fprintln(w, "//------------------------------------------------------------")
 	fmt.Fprint(w, "//  Name:\n")
@@ -20,78 +23,75 @@ func addContainerComment(w io.Writer, c *yang.Container) {
 	fmt.Fprintln(w, "//-------------------------------------------------------------")
 }
 
-func genTypeForContainer(w io.Writer, ymod *yang.Module, n yang.Node, keepXmlID bool) {
+// Generate structure for the container which essentially is a set of fields
+// which are elements of the container.
+func genTypeForContainer(w io.Writer, ymod *yang.Module, n yang.Node, prev yang.Node, keepXmlID bool) {
 	var name string
 	var addNs bool = false
-	c, ok := n.(*yang.Container)
+	cont, ok := n.(*yang.Container)
 	if !ok {
-		panic("Not a Container")
+		errorlog("getTypeForContainer(): %s.%s is not a Container", n.NName(), n.Kind())
+		return
 	}
 
-	addContainerComment(w, c)
-	if c.ParentNode().Kind() != "augment" {
-		name = fullName(c)
+	// Find out some useufl information in generation of the name of the
+	// structure that is generated for the container
+	addContainerComment(w, cont)
+	if cont.ParentNode().Kind() != "augment" {
+		name = fullName(cont)
 	} else {
-		name = c.NName()
+		name = fullName(prev) + "_" + cont.NName()
 	}
+
+	// Now we start generating code for the container
 	fmt.Fprintf(w, "type %s_cont struct {\n", genTN(ymod, name))
 	if keepXmlID {
 		mod := getMyModule(ymod)
-		fmt.Fprintf(w, "\tXMLName nc.XmlId `xml:\"%s %s\"`\n", mod.namespace, c.Name)
+		fmt.Fprintf(w, "\tXMLName nc.XmlId `xml:\"%s %s\"`\n", mod.namespace, cont.Name)
 	}
-	for _, c1 := range c.Container {
+	for _, c1 := range cont.Container {
 		generateField(w, ymod, c1, addNs)
 	}
-	for _, l1 := range c.Leaf {
+	for _, l1 := range cont.Leaf {
 		generateField(w, ymod, l1, addNs)
 	}
-	for _, g1 := range c.Grouping {
+	for _, g1 := range cont.Grouping {
 		generateField(w, ymod, g1, addNs)
 	}
-	for _, l1 := range c.List {
+	for _, l1 := range cont.List {
 		generateField(w, ymod, l1, addNs)
 	}
-	for _, n1 := range c.Notification {
+	for _, n1 := range cont.Notification {
 		generateField(w, ymod, n1, addNs)
 	}
-	for _, c1 := range c.Choice {
+	for _, c1 := range cont.Choice {
 		generateField(w, ymod, c1, addNs)
 	}
-	for _, u1 := range c.Uses {
+	for _, u1 := range cont.Uses {
 		generateField(w, ymod, u1, addNs)
 	}
 	fmt.Fprintf(w, "}\n")
 
 	// Generate runtime namespace function
-	mod := getMyModule(c)
+	mod := getMyModule(cont)
 	generateContainerRuntimeNs(w, mod, ymod, name)
 
 	// The code below triggers the code generation for the
 	// constituents of the grouping
-	for _, cont := range c.Container {
-		if cont.ParentNode() == c {
-			generateType(w, ymod, cont, false)
-		}
+	for _, cont1 := range cont.Container {
+		generateType(w, ymod, cont1, cont, false)
 	}
-	for _, leaf := range c.Leaf {
-		if leaf.ParentNode() == c {
-			generateType(w, ymod, leaf, false)
-		}
+	for _, leaf := range cont.Leaf {
+		generateType(w, ymod, leaf, cont, false)
 	}
-	for _, list := range c.List {
-		if list.ParentNode() == c {
-			generateType(w, ymod, list, false)
-		}
+	for _, list := range cont.List {
+		generateType(w, ymod, list, cont, false)
 	}
-	for _, notif := range c.Notification {
-		if notif.ParentNode() == c {
-			generateType(w, ymod, notif, false)
-		}
+	for _, notif := range cont.Notification {
+		generateType(w, ymod, notif, cont, false)
 	}
-	for _, choice := range c.Choice {
-		if choice.ParentNode() == c {
-			generateType(w, ymod, choice, false)
-		}
+	for _, choice := range cont.Choice {
+		generateType(w, ymod, choice, cont, false)
 	}
 }
 

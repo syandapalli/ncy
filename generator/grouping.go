@@ -9,8 +9,8 @@ import (
 
 func addGroupingComment(w io.Writer, g *yang.Grouping) {
 	fmt.Fprintln(w, "//------------------------------------------------------------")
-	fmt.Fprint(w, "//  Name:\n")
-	s := indentString(g.NName())
+	fmt.Fprint(w, "//  Name: \n")
+	s := indentString("Grouping: " + g.NName())
 	s = commentString(s)
 	fmt.Fprint(w, s)
 	fmt.Fprint(w, "//  Description:\n")
@@ -69,27 +69,27 @@ func processGrouping(w io.Writer, submod *SubModule, ymod *yang.Module, n yang.N
 	// constituents of the grouping
 	for _, l1 := range g.Leaf {
 		if l1.ParentNode() == g {
-			generateType(w, ymod, l1, addNs)
+			generateType(w, ymod, l1, g, addNs)
 		}
 	}
 	for _, c1 := range g.Container {
 		if c1.ParentNode() == g {
-			generateType(w, ymod, c1, addNs)
+			generateType(w, ymod, c1, g, addNs)
 		}
 	}
 	for _, l1 := range g.List {
 		if l1.ParentNode() == g {
-			generateType(w, ymod, l1, addNs)
+			generateType(w, ymod, l1, g, addNs)
 		}
 	}
 	for _, notif := range g.Notification {
 		if notif.ParentNode() == g {
-			generateType(w, ymod, notif, false)
+			generateType(w, ymod, notif, g, false)
 		}
 	}
 	for _, choice := range g.Choice {
 		if choice.ParentNode() == g {
-			generateType(w, ymod, choice, false)
+			generateType(w, ymod, choice, g, false)
 		}
 	}
 	fmt.Fprintf(w, "\n")

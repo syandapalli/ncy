@@ -20,7 +20,7 @@ func addNotificationComment(w io.Writer, n *yang.Notification) {
 	fmt.Fprintln(w, "//-------------------------------------------------------------")
 }
 
-func genTypeForNotification(w io.Writer, ymod *yang.Module, n yang.Node, keepXmlID bool) {
+func genTypeForNotification(w io.Writer, ymod *yang.Module, n yang.Node, prev yang.Node, keepXmlID bool) {
 	var name string
 	var addNs bool = false
 	notif, ok := n.(*yang.Notification)
@@ -32,7 +32,7 @@ func genTypeForNotification(w io.Writer, ymod *yang.Module, n yang.Node, keepXml
 	if notif.ParentNode().Kind() != "augment" {
 		name = fullName(notif)
 	} else {
-		name = notif.NName()
+		name = fullName(prev) + "_" + notif.NName()
 	}
 	fmt.Fprintf(w, "type %s_cont struct {\n", genTN(ymod, name))
 	if keepXmlID {
@@ -64,17 +64,17 @@ func genTypeForNotification(w io.Writer, ymod *yang.Module, n yang.Node, keepXml
 	// constituents of the grouping
 	for _, c1 := range notif.Container {
 		if c1.ParentNode() == notif {
-			generateType(w, ymod, c1, false)
+			generateType(w, ymod, c1, notif, false)
 		}
 	}
 	for _, l1 := range notif.Leaf {
 		if l1.ParentNode() == notif {
-			generateType(w, ymod, l1, false)
+			generateType(w, ymod, l1, notif, false)
 		}
 	}
 	for _, l1 := range notif.List {
 		if l1.ParentNode() == notif {
-			generateType(w, ymod, l1, false)
+			generateType(w, ymod, l1, notif, false)
 		}
 	}
 }

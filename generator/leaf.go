@@ -33,10 +33,11 @@ func getLeafTypeName(m *yang.Module, l *yang.Leaf) string {
 	}
 }
 
-func genTypeForLeaf(w io.Writer, m *yang.Module, n yang.Node) {
+func genTypeForLeaf(w io.Writer, m *yang.Module, n yang.Node, prev yang.Node) {
 	l, ok := n.(*yang.Leaf)
 	if !ok {
-		errorlog("Not a Leaf")
+		errorlog("genTypeForLeaf(): %s.%s is not a Leaf", n.NName(), n.Kind())
+		return
 	}
 
 	// Need to generate type for a leaf only if it creates a
@@ -45,10 +46,11 @@ func genTypeForLeaf(w io.Writer, m *yang.Module, n yang.Node) {
 	processType(w, m, l.Type)
 }
 
-func genTypeForLeafList(w io.Writer, m *yang.Module, n yang.Node) {
+func genTypeForLeafList(w io.Writer, m *yang.Module, n yang.Node, prev yang.Node) {
 	l, ok := n.(*yang.LeafList)
 	if !ok {
-		errorlog("Not a LeafList")
+		errorlog("genTypeForLeafList(): %s.%s is not a LeafList", n.NName(), n.Kind())
+		return
 	}
 
 	// Need to generate type for a leaf only if it creates a

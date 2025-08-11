@@ -102,21 +102,21 @@ func generateField(w io.Writer, ymod *yang.Module, node yang.Node, addNs bool) {
 
 // This function goes through the list of entries that are contained within elements
 // such as grouping, container, lists, etc. and generates the needed type definitions
-func generateType(w io.Writer, ymod *yang.Module, node yang.Node, keepXmlID bool) {
+func generateType(w io.Writer, ymod *yang.Module, node yang.Node, prev yang.Node, keepXmlID bool) {
 	debuglog("generateTypes(): Generating type for %s", node.NName())
 	switch node.Kind() {
 	case "container":
-		genTypeForContainer(w, ymod, node, keepXmlID)
+		genTypeForContainer(w, ymod, node, prev, keepXmlID)
 	case "list":
-		genTypeForList(w, ymod, node)
+		genTypeForList(w, ymod, node, prev)
 	case "leaf":
-		genTypeForLeaf(w, ymod, node)
+		genTypeForLeaf(w, ymod, node, prev)
 	case "leaf-list":
-		genTypeForLeafList(w, ymod, node)
+		genTypeForLeafList(w, ymod, node, prev)
 	case "choice":
-		genTypeForChoice(w, ymod, node, keepXmlID)
+		genTypeForChoice(w, ymod, node, prev, keepXmlID)
 	case "case":
-		genTypeForCase(w, ymod, node, keepXmlID)
+		genTypeForCase(w, ymod, node, prev, keepXmlID)
 	default:
 		errorlog("generateType(): %s.%s is not yet supported", node.NName(), node.Kind())
 	}

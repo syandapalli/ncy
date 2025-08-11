@@ -82,13 +82,13 @@ func getTypeName(m *yang.Module, t *yang.Type) string {
 			return genTN(m, fullName(p)) + "_" + t.Name + "_" + strconv.FormatInt(int64(id), 10)
 		}
 	case "identityref":
-		return genTN(m, t.IdentityBase.Name)
+		return genTN(m, t.IdentityBase.Name + "_id")
 	default:
 		prefix := getPrefix(t.Name)
 		if getImportedModuleByPrefix(m, prefix) == nil {
 			return ""
 		}
-		return genTN(m, t.Name)
+		return genTN(m, t.Name + "_type")
 	}
 }
 
@@ -133,9 +133,10 @@ func processType(w io.Writer, m *yang.Module, n yang.Node) {
 //functions, we will implement them here
 func processDefaultType(w io.Writer, m *yang.Module, t *yang.Type) {
 	p := t.ParentNode()
-	if p.Kind() != "typedef" {
-		return
-	}
+	//if p.Kind() != "typedef" {
+	//	errorlog("processDefaultType(): parent node %s.%s isn't a typedef", p.NName(), p.Kind())
+	//	return
+	//}
 
 	// Basic type definition
 	dtn := genTN(m, fullName(p))
@@ -631,6 +632,7 @@ func processEnumType(w io.Writer, m *yang.Module, t *yang.Type) {
 func processLeafref(w io.Writer, m *yang.Module, t *yang.Type) {
 	p := t.ParentNode()
 	if p.Kind() != "typedef" {
+		errorlog("processLeafref(): parent node %s.%s is not a typedef", p.NName(), p.Kind())
 		return
 	}
 	path := t.Path.Name
@@ -652,7 +654,7 @@ func processIdentityRef(w io.Writer, m *yang.Module, t *yang.Type) {
 	}
 	otn := getTypeName(m, t)
 	itn := genTN(m, fullName(p))
-	fmt.Fprintf(w, "type %s %s_id\n", itn, otn)
+	fmt.Fprintf(w, "type %s %s\n", itn, otn)
 	// Generate the marshal code
 	fmt.Fprintf(w, "func (x %s)MarshalText(ns string) ([]byte, error) {\n", itn)
 	fmt.Fprintf(w, "\treturn %s(x).MarshalText(ns)\n", otn)

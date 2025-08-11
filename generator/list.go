@@ -7,18 +7,26 @@ import (
 	"github.com/openconfig/goyang/pkg/yang"
 )
 
-func genTypeForList(w io.Writer, m *yang.Module, n yang.Node) {
+func genTypeForList(w io.Writer, m *yang.Module, n yang.Node, prev yang.Node) {
 	var addNs bool = false
+	var ln string
 	// Complete some sanity checks before going ahead
 	l, ok := n.(*yang.List)
 	if !ok {
-		panic("Not a List")
+		errorlog("genTypeForList(): %s.%s is not a List", n.NName(), n.Kind())
+		return
 	}
 
 	// We are all good. Let's generate the first type
 	// that represents the list which has fields which
 	// are also generated within
-	ln := fullName(l)
+	if l.ParentNode().Kind() != "augment" {
+		ln = fullName(l)
+	} else {
+		ln = fullName(prev) + "_" + l.NName()
+	}
+
+	// Now start generating the code for the list
 	fmt.Fprintf(w, "type %s struct {\n", genTN(m, ln))
 	for _, l1 := range l.Leaf {
 		generateField(w, m, l1, addNs)
@@ -46,29 +54,19 @@ func genTypeForList(w io.Writer, m *yang.Module, n yang.Node) {
 	// The code below generates the type definitions needed
 	// for the constituents inside a list
 	for _, cont := range l.Container {
-		if cont.ParentNode() == l {
-			generateType(w, m, cont, false)
-		}
+		generateType(w, m, cont, l, false)
 	}
 	for _, leaf := range l.Leaf {
-		if leaf.ParentNode() == l {
-			generateType(w, m, leaf, false)
-		}
+		generateType(w, m, leaf, l, false)
 	}
 	for _, list := range l.List {
-		if list.ParentNode() == l {
-			generateType(w, m, list, false)
-		}
+		generateType(w, m, list, l, false)
 	}
 	for _, notif := range l.Notification {
-		if notif.ParentNode() == l {
-			generateType(w, m, notif, false)
-		}
+		generateType(w, m, notif, l, false)
 	}
 	for _, choice := range l.Choice {
-		if choice.ParentNode() == l {
-			generateType(w, m, choice, false)
-		}
+		generateType(w, m, choice, l, false)
 	}
 }
 
@@ -123,11 +121,6 @@ func getMatchingUsesNodeFromList(l *yang.List, name string) yang.Node {
 			return l
 		}
 	}
-	//for _, g1 := range l.Grouping {
-	//	if n := getMatchingUsesNodeFromGrouping(g1, name); n != nil {
-	//		return n
-	//	}
-	//}
 	for _, c1 := range l.Container {
 		if n := getMatchingUsesNodeFromContainer(c1, name); n != nil {
 			return n
