@@ -10,13 +10,15 @@ import (
 func addIdentityComment(w io.Writer, i *yang.Identity) {
 	fmt.Fprintln(w, "//------------------------------------------------------------")
 	fmt.Fprint(w, "//  Name:\n")
-	s := indentString(i.NName())
+	s := indentString("identity: " + i.NName())
 	s = commentString(s)
 	fmt.Fprint(w, s)
 	fmt.Fprint(w, "//  Description:\n")
-	s = indentString(i.Description.Name)
-	s = commentString(s)
-	fmt.Fprint(w, s)
+	if i.Description != nil {
+		s = indentString(i.Description.Name)
+		s = commentString(s)
+		fmt.Fprint(w, s)
+	}
 	fmt.Fprintln(w, "//-------------------------------------------------------------")
 }
 
@@ -31,10 +33,10 @@ func generateTypeDef(w io.Writer, m *yang.Module, id *yang.Identity) {
 		mname = m.Name
 	}
 
-	// This is the absolute base of the identity tree.
-	// Lets create a type definition for it and also
-	// the data structure to store the tree
+	// This is base of a an identity branch. Lets create a type definition
+	// for it and also the maps to store the nodes that are part of the branch
 	addIdentityComment(w, id)
+
 	tn := genTN(m, id.Name) + "_id"
 	fmt.Fprintf(w, "type %s string\n", tn)
 	fmt.Fprintf(w, "var %s_prefix_map = map[string]string{}\n", tn)
@@ -73,13 +75,13 @@ func generateTypeDef(w io.Writer, m *yang.Module, id *yang.Identity) {
 	// Write to runtime ns function
 	fmt.Fprintf(w, "func (x %s)RuntimeNs() string {\n", tn)
 	fmt.Fprintf(w, "\tif ns, ok := %s_ns_map[string(x)]; ok {\n", tn)
-	// fmt.Fprintf(w, "\t\tif ns != %s_ns {\n", genFN(mname))
-	// fmt.Fprintf(w, "\t\t\tif prefix, ok := %s_prefix_map[string(x)]; ok {\n", tn)
-	// fmt.Fprintf(w, "\t\t\t\treturn prefix+\"!\"+ns\n")
-	// fmt.Fprintf(w, "\t\t\t} else {\n")
-	// fmt.Fprintf(w, "\t\t\t\treturn ns\n")
-	// fmt.Fprintf(w, "\t\t\t}\n")
-	// fmt.Fprintf(w, "\t\t}\n")
+	//fmt.Fprintf(w, "\t\tif ns != %s_ns {\n", genFN(mname))
+	//fmt.Fprintf(w, "\t\t\tif prefix, ok := %s_prefix_map[string(x)]; ok {\n", tn)
+	//fmt.Fprintf(w, "\t\t\t\treturn prefix+\"!\"+ns\n")
+	//fmt.Fprintf(w, "\t\t\t} else {\n")
+	//fmt.Fprintf(w, "\t\t\t\treturn ns\n")
+	//fmt.Fprintf(w, "\t\t\t}\n")
+	//fmt.Fprintf(w, "\t\t}\n")
 	fmt.Fprintf(w, "\t\tif prefix, ok := %s_prefix_map[string(x)]; ok {\n", tn)
 	fmt.Fprintf(w, "\t\t\treturn prefix+\"!\"+ns\n")
 	fmt.Fprintf(w, "\t\t} else {\n")
@@ -180,6 +182,9 @@ func processIdentity(w io.Writer, submod *SubModule, ymod *yang.Module, n yang.N
 	generateMapEntries(ymod, id)
 }
 
+// The map is used to translate the enumeration values generated to strings and
+// strings to enumerated values during the marshaling and unmarshaling of the
+// the structures. The entries are created for each identity
 // Recursively identifies all the base identities and adds code
 // for filling up the respective maps
 func generateMapEntries(ymod *yang.Module, id *yang.Identity) {
@@ -194,6 +199,9 @@ func generateMapEntries(ymod *yang.Module, id *yang.Identity) {
 		baseymod, id1 = locateBase(baseymod, id1)
 	}
 }
+
+// This function adds necessary entries into the maps for a single identity
+// statement.
 func addMapEntry(m *yang.Module, id *yang.Identity, mbase *yang.Module, base *yang.Identity, namespace string, prefix string) {
 	submod := getSubModule(m.Name)
 	if submod != nil {
@@ -203,7 +211,7 @@ func addMapEntry(m *yang.Module, id *yang.Identity, mbase *yang.Module, base *ya
 		submod.initfunc = append(submod.initfunc, s)
 		return
 	}
-	panic("Module not found:" + m.Name)
+	errorlog("addMapEntry(): Module %s not found for %s.%s", m.Name, id.NName(), id.Kind())
 }
 
 // Add the base identity to the module so that it is known that
@@ -223,8 +231,11 @@ func addBaseIdentity(m *yang.Module, id *yang.Identity) {
 	mod.addBaseIdentity(id)
 }
 
+// The preprocess of identities collects the identities and their respective
+// base identities. This will help determine if a data type needs to be
+// generated for a given identity
 func (m *Module) preprocessIdentities() {
-	debuglog("preprocessIdentiites(): processing %s", m.name)
+	debuglog("preprocessIdentiites(): processing module %s", m.name)
 	for _, sm := range m.submodules {
 		for _, i := range sm.module.Identity {
 			debuglog("preprocessIdentities(): processing %s.%s", i.NName(), i.Kind())

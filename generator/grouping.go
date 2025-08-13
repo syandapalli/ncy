@@ -62,29 +62,19 @@ func processGrouping(w io.Writer, submod *SubModule, ymod *yang.Module, group *y
 	// The code below triggers the code generation for the
 	// constituents of the grouping
 	for _, leaf := range group.Leaf {
-		if leaf.ParentNode() == group {
-			generateType(w, ymod, leaf, group, addNs)
-		}
+		generateType(w, ymod, leaf, group, addNs)
 	}
 	for _, cont := range group.Container {
-		if cont.ParentNode() == group {
-			generateType(w, ymod, cont, group, addNs)
-		}
+		generateType(w, ymod, cont, group, addNs)
 	}
 	for _, list := range group.List {
-		if list.ParentNode() == group {
-			generateType(w, ymod, list, group, addNs)
-		}
+		generateType(w, ymod, list, group, addNs)
 	}
 	for _, notif := range group.Notification {
-		if notif.ParentNode() == group {
-			generateType(w, ymod, notif, group, false)
-		}
+		generateType(w, ymod, notif, group, false)
 	}
 	for _, choice := range group.Choice {
-		if choice.ParentNode() == group {
-			generateType(w, ymod, choice, group, false)
-		}
+		generateType(w, ymod, choice, group, false)
 	}
 	fmt.Fprintf(w, "\n")
 
@@ -105,7 +95,6 @@ func generateGroupingRuntimeNs(w io.Writer, submod *SubModule, ymod *yang.Module
 // as the fields of grouping included using 'uses' is inserted as is the node where
 // it is included. Thus, for 'uses', we need to iterate through the fields of the
 // included grouping.
-// TODO. The iteration for 'uses' is not implemented yet
 func getNodeFromGrouping(n yang.Node, name string, leaf bool) yang.Node {
 	debuglog("getNodeFromGrouping(): looking for %s in %s.%s", name, n.NName(), n.Kind())
 	g, ok := n.(*yang.Grouping)
@@ -187,7 +176,9 @@ func getMatchingUsesNodeFromGrouping(g *yang.Grouping, name string) yang.Node {
 }
 
 
-// One of the utility functions that help traversal across the YANG specification
+// One of the utility functions that help traverse across the YANG specification
+// and locate the grouping by name. Usually groupings are at the first level from
+// the module and for now this function assumes so.
 func getGroupingByName(u *yang.Uses) *yang.Grouping {
 	prefix := getPrefix(u.NName())
 	gname := getName(u.NName())

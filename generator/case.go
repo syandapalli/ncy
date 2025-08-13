@@ -12,7 +12,7 @@ import (
 func addCaseComment(w io.Writer, case1 *yang.Case) {
 	fmt.Fprintln(w, "//------------------------------------------------------------")
 	fmt.Fprint(w, "//  Name:\n")
-	s := indentString(case1.NName())
+	s := indentString("case: " + case1.NName())
 	s = commentString(s)
 	fmt.Fprint(w, s)
 	fmt.Fprint(w, "//  Description:\n")
@@ -36,12 +36,11 @@ func genTypeForCase(w io.Writer, ymod *yang.Module, n yang.Node, prev yang.Node,
 		return
 	}
 
+	// Generate code for the case statement
 	addCaseComment(w, case1)
-	if case1.ParentNode().Kind() != "augment" {
-		name = fullName(case1)
-	} else {
-		name = fullName(prev) + "_" + case1.NName()
-	}
+
+	// Generate the structure for the case statement
+	name = fullName(case1)
 	fmt.Fprintf(w, "type %s struct {\n", genTN(ymod, name))
 	if keepXmlID {
 		mod := getMyModule(ymod)
@@ -65,19 +64,13 @@ func genTypeForCase(w io.Writer, ymod *yang.Module, n yang.Node, prev yang.Node,
 	// The code below triggers the code generation for the
 	// constituents of the grouping
 	for _, cont := range case1.Container {
-		if cont.ParentNode() == case1 {
-			generateType(w, ymod, cont, case1, false)
-		}
+		generateType(w, ymod, cont, case1, false)
 	}
 	for _, leaf := range case1.Leaf {
-		if leaf.ParentNode() == case1 {
-			generateType(w, ymod, leaf, case1, false)
-		}
+		generateType(w, ymod, leaf, case1, false)
 	}
 	for _, list := range case1.List {
-		if list.ParentNode() == case1 {
-			generateType(w, ymod, list, case1, false)
-		}
+		generateType(w, ymod, list, case1, false)
 	}
 }
 

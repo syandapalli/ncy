@@ -13,13 +13,15 @@ import (
 func addChoiceComment(w io.Writer, c *yang.Choice) {
 	fmt.Fprintln(w, "//------------------------------------------------------------")
 	fmt.Fprint(w, "//  Name:\n")
-	s := indentString(c.NName())
+	s := indentString("choice: " + c.NName())
 	s = commentString(s)
 	fmt.Fprint(w, s)
 	fmt.Fprint(w, "//  Description:\n")
-	s = indentString(c.Description.Name)
-	s = commentString(s)
-	fmt.Fprint(w, s)
+	if c.Description != nil {
+		s = indentString(c.Description.Name)
+		s = commentString(s)
+		fmt.Fprint(w, s)
+	}
 	fmt.Fprintln(w, "//-------------------------------------------------------------")
 }
 
@@ -28,7 +30,6 @@ func addChoiceComment(w io.Writer, c *yang.Choice) {
 // must be purely case statements. However, it is legal to have other types
 // of statements instead of case statements.
 func genTypeForChoice(w io.Writer, ymod *yang.Module, n yang.Node, prev yang.Node, keepXmlID bool) {
-	var name string
 	var addNs bool = false
 	choice, ok := n.(*yang.Choice)
 	if !ok {
@@ -37,11 +38,7 @@ func genTypeForChoice(w io.Writer, ymod *yang.Module, n yang.Node, prev yang.Nod
 	}
 
 	addChoiceComment(w, choice)
-	if choice.ParentNode().Kind() != "augment" {
-		name = fullName(choice)
-	} else {
-		name = fullName(prev) + "_" + choice.NName()
-	}
+	name := fullName(choice)
 	fmt.Fprintf(w, "type %s struct {\n", genTN(ymod, name))
 	if keepXmlID {
 		mod := getMyModule(ymod)

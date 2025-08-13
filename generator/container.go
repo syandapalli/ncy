@@ -13,7 +13,7 @@ import (
 func addContainerComment(w io.Writer, c *yang.Container) {
 	fmt.Fprintln(w, "//------------------------------------------------------------")
 	fmt.Fprint(w, "//  Name:\n")
-	s := indentString(c.NName())
+	s := indentString("container: " + c.NName())
 	s = commentString(s)
 	fmt.Fprint(w, s)
 	fmt.Fprint(w, "//  Description:\n")
@@ -36,14 +36,9 @@ func genTypeForContainer(w io.Writer, ymod *yang.Module, n yang.Node, prev yang.
 		return
 	}
 
-	// Find out some useufl information in generation of the name of the
-	// structure that is generated for the container
+	// Add the comment for the structure of the container
 	addContainerComment(w, cont)
-	if cont.ParentNode().Kind() != "augment" {
-		name = fullName(cont)
-	} else {
-		name = fullName(prev) + "_" + cont.NName()
-	}
+	name = fullName(cont)
 
 	// Now we start generating code for the container
 	fmt.Fprintf(w, "type %s_cont struct {\n", genTN(ymod, name))
@@ -83,17 +78,17 @@ func genTypeForContainer(w io.Writer, ymod *yang.Module, n yang.Node, prev yang.
 	for _, cont1 := range cont.Container {
 		generateType(w, ymod, cont1, cont, false)
 	}
-	for _, leaf := range cont.Leaf {
-		generateType(w, ymod, leaf, cont, false)
+	for _, leaf1 := range cont.Leaf {
+		generateType(w, ymod, leaf1, cont, false)
 	}
-	for _, list := range cont.List {
-		generateType(w, ymod, list, cont, false)
+	for _, list1 := range cont.List {
+		generateType(w, ymod, list1, cont, false)
 	}
-	for _, notif := range cont.Notification {
-		generateType(w, ymod, notif, cont, false)
+	for _, notif1 := range cont.Notification {
+		generateType(w, ymod, notif1, cont, false)
 	}
-	for _, choice := range cont.Choice {
-		generateType(w, ymod, choice, cont, false)
+	for _, choice1 := range cont.Choice {
+		generateType(w, ymod, choice1, cont, false)
 	}
 }
 
@@ -172,4 +167,3 @@ func getMatchingUsesNodeFromContainer(c *yang.Container, name string) yang.Node 
 	}
 	return nil
 }
-
