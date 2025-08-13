@@ -85,10 +85,12 @@ func getTypeName(m *yang.Module, t *yang.Type) string {
 		return genTN(m, t.IdentityBase.Name + "_id")
 	default:
 		prefix := getPrefix(t.Name)
-		if getImportedModuleByPrefix(m, prefix) == nil {
+		ymod := getMyYangModule(t)
+		if mod := getImportedModuleByPrefix(ymod, prefix); mod == nil {
 			return ""
+		} else {
+			return genTN(ymod, t.Name)
 		}
-		return genTN(m, t.Name + "_type")
 	}
 }
 
@@ -98,7 +100,8 @@ func getTypeName(m *yang.Module, t *yang.Type) string {
 func processType(w io.Writer, m *yang.Module, n yang.Node) {
 	t, ok := n.(*yang.Type)
 	if !ok {
-		panic("Not a Type")
+		errorlog("processType(): %s.%s is not a Type", n.NName(), n.Kind())
+		return
 	}
 	switch t.Name {
 	case "enumeration":
@@ -133,10 +136,10 @@ func processType(w io.Writer, m *yang.Module, n yang.Node) {
 //functions, we will implement them here
 func processDefaultType(w io.Writer, m *yang.Module, t *yang.Type) {
 	p := t.ParentNode()
-	//if p.Kind() != "typedef" {
-	//	errorlog("processDefaultType(): parent node %s.%s isn't a typedef", p.NName(), p.Kind())
-	//	return
-	//}
+	if p.Kind() != "typedef" {
+		debuglog("processDefaultType(): parent node %s.%s isn't a typedef", p.NName(), p.Kind())
+		return
+	}
 
 	// Basic type definition
 	dtn := genTN(m, fullName(p))
@@ -573,7 +576,8 @@ func processUnionType(w io.Writer, m *yang.Module, t *yang.Type) {
 func processEnumType(w io.Writer, m *yang.Module, t *yang.Type) {
 	// Sanity check to see if we are OK
 	if t.Name != "enumeration" {
-		panic("The passed Type isn't an enumeration")
+		errorlog("processEnumType():%s.%s isn't an enumeration", t.NName(), t.Kind())
+		return
 	}
 
 	// Generate the type statement for the enum. All enums
@@ -631,14 +635,14 @@ func processEnumType(w io.Writer, m *yang.Module, t *yang.Type) {
 // to be used
 func processLeafref(w io.Writer, m *yang.Module, t *yang.Type) {
 	p := t.ParentNode()
-	if p.Kind() != "typedef" {
-		errorlog("processLeafref(): parent node %s.%s is not a typedef", p.NName(), p.Kind())
+	if p.Kind() != "leaf" && p.Kind() != "typedef" {
+		errorlog("processLeafref(): parent node %s.%s is not a valid kind", p.NName(), p.Kind())
 		return
 	}
 	path := t.Path.Name
 	l := getLeafref(path, m, p)
 	if l == nil {
-		errorlog("leaf for referrence %s is not found", path)
+		errorlog("processLeafref(): leaf for referrence %s is not found", path)
 		return
 	}
 	fmt.Fprintf(w, "type %s %s\n", genTN(m, fullName(p)), getTypeName(m, l.Type))
@@ -650,6 +654,7 @@ func processIdentityRef(w io.Writer, m *yang.Module, t *yang.Type) {
 	// generate the type definition
 	p := t.ParentNode()
 	if p.Kind() != "typedef" {
+		debuglog("processIdentityRef(): %s.%s is not a typedef", p.NName(), p.Kind())
 		return
 	}
 	otn := getTypeName(m, t)

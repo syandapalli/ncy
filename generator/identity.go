@@ -35,8 +35,8 @@ func generateTypeDef(w io.Writer, m *yang.Module, id *yang.Identity) {
 	// Lets create a type definition for it and also
 	// the data structure to store the tree
 	addIdentityComment(w, id)
-	tn := genTN(m, id.Name)
-	fmt.Fprintf(w, "type %s_id string\n", tn)
+	tn := genTN(m, id.Name) + "_id"
+	fmt.Fprintf(w, "type %s string\n", tn)
 	fmt.Fprintf(w, "var %s_prefix_map = map[string]string{}\n", tn)
 	fmt.Fprintf(w, "var %s_ns_map = map[string]string{}\n", tn)
 
@@ -197,9 +197,9 @@ func generateMapEntries(ymod *yang.Module, id *yang.Identity) {
 func addMapEntry(m *yang.Module, id *yang.Identity, mbase *yang.Module, base *yang.Identity, namespace string, prefix string) {
 	submod := getSubModule(m.Name)
 	if submod != nil {
-		s := fmt.Sprintf("%s_prefix_map[\"%s\"] = \"%s\"\n", genTN(mbase, base.Name), id.Name, prefix)
+		s := fmt.Sprintf("%s_prefix_map[\"%s\"] = \"%s\"\n", genTN(mbase, base.Name) + "_id", id.Name, prefix)
 		submod.initfunc = append(submod.initfunc, s)
-		s = fmt.Sprintf("%s_ns_map[\"%s\"] = \"%s\"\n", genTN(mbase, base.Name), id.Name, namespace)
+		s = fmt.Sprintf("%s_ns_map[\"%s\"] = \"%s\"\n", genTN(mbase, base.Name) + "_id", id.Name, namespace)
 		submod.initfunc = append(submod.initfunc, s)
 		return
 	}

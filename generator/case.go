@@ -48,13 +48,13 @@ func genTypeForCase(w io.Writer, ymod *yang.Module, n yang.Node, prev yang.Node,
 		fmt.Fprintf(w, "\tXMLName nc.XmlId `xml:\"%s %s\"`\n", mod.namespace, case1.NName())
 	}
 	for _, cont := range case1.Container {
-		generateField(w, ymod, cont, addNs)
+		generateField(w, ymod, cont, case1, addNs)
 	}
 	for _, leaf := range case1.Leaf {
-		generateField(w, ymod, leaf, addNs)
+		generateField(w, ymod, leaf, case1, addNs)
 	}
 	for _, list := range case1.List {
-		generateField(w, ymod, list, addNs)
+		generateField(w, ymod, list, case1, addNs)
 	}
 	fmt.Fprintf(w, "}\n")
 

@@ -40,19 +40,19 @@ func genTypeForNotification(w io.Writer, ymod *yang.Module, n yang.Node, prev ya
 		fmt.Fprintf(w, "\tXMLName nc.XmlId `xml:\"%s %s\"`\n", mod.namespace, notif.Name)
 	}
 	for _, c1 := range notif.Container {
-		generateField(w, ymod, c1, addNs)
+		generateField(w, ymod, c1, notif, addNs)
 	}
 	for _, l1 := range notif.Leaf {
-		generateField(w, ymod, l1, addNs)
+		generateField(w, ymod, l1, notif, addNs)
 	}
 	for _, g1 := range notif.Grouping {
-		generateField(w, ymod, g1, addNs)
+		generateField(w, ymod, g1, notif, addNs)
 	}
 	for _, l1 := range notif.List {
-		generateField(w, ymod, l1, addNs)
+		generateField(w, ymod, l1, notif, addNs)
 	}
 	for _, u1 := range notif.Uses {
-		generateField(w, ymod, u1, addNs)
+		generateField(w, ymod, u1, notif, addNs)
 	}
 	fmt.Fprintf(w, "}\n")
 

@@ -246,7 +246,7 @@ var bbfponmodules = []string {
 	"bbf-qos-policies-sub-interfaces",
 }
 
-var modulename string
+var package_name string
 // Read the files from the directory
 func readDir(path string, suffix string) []string {
 	var filelist []string
@@ -287,7 +287,7 @@ func main() {
 	var indir, outdir, apiIndir string
 	getopt.StringVarLong(&indir, "indir", 'i', "directory to look for yang files")
 	getopt.StringVarLong(&outdir, "outdir", 'o', "directory for output files")
-	getopt.StringVarLong(&modulename, "modulename", 'm', "golang package name")
+	getopt.StringVarLong(&package_name, "package_name", 'p', "golang package name")
 	getopt.StringVarLong(&apiIndir, "api-indir", 'I', "directory for input api files")
 	getopt.Parse()
 
@@ -297,8 +297,8 @@ func main() {
 	if outdir == "" {
 		log.Fatalf("-o: output directory must be present")
 	}
-	if  modulename == "" {
-		modulename = "goyang"
+	if  package_name == "" {
+		package_name = "goyang"
 	}
 
 	// We recursively go through the directory for all the yang files which will

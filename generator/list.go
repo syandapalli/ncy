@@ -11,7 +11,7 @@ func genTypeForList(w io.Writer, m *yang.Module, n yang.Node, prev yang.Node) {
 	var addNs bool = false
 	var ln string
 	// Complete some sanity checks before going ahead
-	l, ok := n.(*yang.List)
+	list, ok := n.(*yang.List)
 	if !ok {
 		errorlog("genTypeForList(): %s.%s is not a List", n.NName(), n.Kind())
 		return
@@ -20,53 +20,53 @@ func genTypeForList(w io.Writer, m *yang.Module, n yang.Node, prev yang.Node) {
 	// We are all good. Let's generate the first type
 	// that represents the list which has fields which
 	// are also generated within
-	if l.ParentNode().Kind() != "augment" {
-		ln = fullName(l)
+	if list.ParentNode().Kind() != "augment" {
+		ln = fullName(list)
 	} else {
-		ln = fullName(prev) + "_" + l.NName()
+		ln = fullName(prev) + "_" + list.NName()
 	}
 
 	// Now start generating the code for the list
 	fmt.Fprintf(w, "type %s struct {\n", genTN(m, ln))
-	for _, l1 := range l.Leaf {
-		generateField(w, m, l1, addNs)
+	for _, l1 := range list.Leaf {
+		generateField(w, m, l1, list, addNs)
 	}
-	for _, c1 := range l.Container {
-		generateField(w, m, c1, addNs)
+	for _, c1 := range list.Container {
+		generateField(w, m, c1, list, addNs)
 	}
-	for _, g1 := range l.Grouping {
-		generateField(w, m, g1, addNs)
+	for _, g1 := range list.Grouping {
+		generateField(w, m, g1, list, addNs)
 	}
-	for _, l1 := range l.List {
-		generateField(w, m, l1, addNs)
+	for _, l1 := range list.List {
+		generateField(w, m, l1, list, addNs)
 	}
-	for _, n1 := range l.Notification {
-		generateField(w, m, n1, addNs)
+	for _, n1 := range list.Notification {
+		generateField(w, m, n1, list, addNs)
 	}
-	for _, c1 := range l.Choice {
-		generateField(w, m, c1, addNs)
+	for _, c1 := range list.Choice {
+		generateField(w, m, c1, list, addNs)
 	}
-	for _, u1 := range l.Uses {
-		generateField(w, m, u1, addNs)
+	for _, u1 := range list.Uses {
+		generateField(w, m, u1, list, addNs)
 	}
 	fmt.Fprintf(w, "}\n")
 
 	// The code below generates the type definitions needed
 	// for the constituents inside a list
-	for _, cont := range l.Container {
-		generateType(w, m, cont, l, false)
+	for _, cont := range list.Container {
+		generateType(w, m, cont, list, false)
 	}
-	for _, leaf := range l.Leaf {
-		generateType(w, m, leaf, l, false)
+	for _, leaf := range list.Leaf {
+		generateType(w, m, leaf, list, false)
 	}
-	for _, list := range l.List {
-		generateType(w, m, list, l, false)
+	for _, list1 := range list.List {
+		generateType(w, m, list1, list, false)
 	}
-	for _, notif := range l.Notification {
-		generateType(w, m, notif, l, false)
+	for _, notif := range list.Notification {
+		generateType(w, m, notif, list, false)
 	}
-	for _, choice := range l.Choice {
-		generateType(w, m, choice, l, false)
+	for _, choice := range list.Choice {
+		generateType(w, m, choice, list, false)
 	}
 }
 

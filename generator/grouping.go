@@ -27,69 +27,63 @@ func printType(w io.Writer, t *yang.Type) {
 	}
 }
 
-func processGrouping(w io.Writer, submod *SubModule, ymod *yang.Module, n yang.Node, keepXmlID bool) {
-	// Check the precondtions before we dive deep in
-	g, ok := n.(*yang.Grouping)
-	if !ok {
-		errorlog("processGrouping(): Not a Grouping:%s", n.NName())
-	}
-
+func processGrouping(w io.Writer, submod *SubModule, ymod *yang.Module, group *yang.Grouping, keepXmlID bool) {
 	// Add comment to describe the source of the generated code
-	addGroupingComment(w, g)
+	addGroupingComment(w, group)
 
 	// If the grouping is part of any augment, we need to add namespace
 	// for each field of the grouping. Check if the uses is included in
 	// any augment
-	addNs := groupingInAugment(ymod, g)
+	addNs := groupingInAugment(ymod, group)
 
 	// The code below generates code for the grouping
-	debuglog("processGrouping(): Generating for group %s", g.NName())
-	fmt.Fprintf(w, "type %s struct {\n", genTN(ymod, g.NName()))
-	for _, l1 := range g.Leaf {
-		generateField(w, ymod, l1, addNs)
+	debuglog("processGrouping(): Generating for group %s", group.NName())
+	fmt.Fprintf(w, "type %s struct {\n", genTN(ymod, group.NName()))
+	for _, l1 := range group.Leaf {
+		generateField(w, ymod, l1, group, addNs)
 	}
-	for _, c1 := range g.Container {
-		generateField(w, ymod, c1, addNs)
+	for _, c1 := range group.Container {
+		generateField(w, ymod, c1, group, addNs)
 	}
-	for _, g1 := range g.Grouping {
-		generateField(w, ymod, g1, addNs)
+	for _, g1 := range group.Grouping {
+		generateField(w, ymod, g1, group, addNs)
 	}
-	for _, l1 := range g.List {
-		generateField(w, ymod, l1, addNs)
+	for _, l1 := range group.List {
+		generateField(w, ymod, l1, group, addNs)
 	}
-	for _, u1 := range g.Uses {
-		generateField(w, ymod, u1, addNs)
+	for _, u1 := range group.Uses {
+		generateField(w, ymod, u1, group, addNs)
 	}
 	fmt.Fprintf(w, "}\n")
 
 	// Generate runtime namespace function
-	generateGroupingRuntimeNs(w, submod, ymod, g)
+	generateGroupingRuntimeNs(w, submod, ymod, group)
 
 	// The code below triggers the code generation for the
 	// constituents of the grouping
-	for _, l1 := range g.Leaf {
-		if l1.ParentNode() == g {
-			generateType(w, ymod, l1, g, addNs)
+	for _, leaf := range group.Leaf {
+		if leaf.ParentNode() == group {
+			generateType(w, ymod, leaf, group, addNs)
 		}
 	}
-	for _, c1 := range g.Container {
-		if c1.ParentNode() == g {
-			generateType(w, ymod, c1, g, addNs)
+	for _, cont := range group.Container {
+		if cont.ParentNode() == group {
+			generateType(w, ymod, cont, group, addNs)
 		}
 	}
-	for _, l1 := range g.List {
-		if l1.ParentNode() == g {
-			generateType(w, ymod, l1, g, addNs)
+	for _, list := range group.List {
+		if list.ParentNode() == group {
+			generateType(w, ymod, list, group, addNs)
 		}
 	}
-	for _, notif := range g.Notification {
-		if notif.ParentNode() == g {
-			generateType(w, ymod, notif, g, false)
+	for _, notif := range group.Notification {
+		if notif.ParentNode() == group {
+			generateType(w, ymod, notif, group, false)
 		}
 	}
-	for _, choice := range g.Choice {
-		if choice.ParentNode() == g {
-			generateType(w, ymod, choice, g, false)
+	for _, choice := range group.Choice {
+		if choice.ParentNode() == group {
+			generateType(w, ymod, choice, group, false)
 		}
 	}
 	fmt.Fprintf(w, "\n")

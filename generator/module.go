@@ -262,6 +262,8 @@ func addFileComments(w io.Writer, ymod *yang.Module) {
 	fmt.Fprintln(w, "//-------------------------------------------------------------")
 }
 
+// This function adds an import which is a string to a list of imports
+// which is a slice of strings. The same is returned.
 func addImport(is []string, i string) []string {
 	for _, i1 := range is {
 		if i1 == i {
@@ -271,6 +273,11 @@ func addImport(is []string, i string) []string {
 	return append(is, i)
 }
 
+// This function gathers imports of a module which is then used to order the
+// modules for processing them in right order. This is needed when processing
+// augments as some augments add data to a container that is added by a different
+// augment. If they are not processed in order, the processing may fail as it
+// doesn't locate the needed containers, etc.
 func getImports(mod *Module) []string {
 	var imports = []string{}
 	for _, sm := range mod.submodules {
@@ -281,12 +288,12 @@ func getImports(mod *Module) []string {
 	return imports
 }
 
-// Process the main module and its submodules
+// Process the main module and its submodules. Process module is responsible
+// for triggering the code that ultimately generates the code for the module
 func processModule(mod *Module, outdir string) {
 	for _, sm := range mod.submodules {
 		fmt.Println("Processing module", sm.module.NName(), "...")
 		processSubModule(mod, sm, outdir)
-		//storeInPrefixModuleMap(sm.module)
 	}
 }
 
@@ -300,40 +307,46 @@ func processSubModule(mod *Module, submod *SubModule, outdir string) {
 	inpath := m.Source.Location()
 	_, file := path.Split(inpath)
 	mainname := strings.Split(file, ".yang")
-	outpath := outdir + "/" + modulename + "/" + mainname[0] + ".go"
+	outpath := outdir + "/" + package_name + "/" + mainname[0] + ".go"
 
 	// If outpath is not present then create it.
 	ensureDirectory(outpath)
 
 	debuglog("Processing file %s%s", mainname[0], "...")
+	// open the file for writing
 	w, err := os.OpenFile(outpath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		errorlog("unable to open file %s", err.Error())
 	}
+	// this will make sure the file is closed where ever we may return from
+	// the function
+	defer w.Close()
 
+	// TODO. Check the logic. Not very sure why this is needed.
 	groupingNames := map[string]struct{}{}
 	for _, u := range submod.module.Uses {
 		groupingNames[u.Name] = struct{}{}
 	}
-	// TODO. Check the logic
 	keepXmlID := checkIfNcImportRequired(submod, groupingNames)
 
-	// Create file header
+	// From here on we are wiriting to the file that will represent this
+	// yang module/submodule.
+
+	// We start with file header
 	fileHeader(mod, submod, w, keepXmlID)
 
-	//entries := mergeAugmentsWithSamePath(submod.module.Entries)
 	// process the entries of the module
 	for _, i := range submod.module.Identity {
 		processIdentity(w, submod, m, i)
 	}
-	for _, g := range submod.module.Grouping {
-		processGrouping(w, submod, m, g, keepXmlID)
-	}
 	for _, t := range submod.module.Typedef {
 		processTypedef(w, submod, m, t)
 	}
-	for _, a := range submod.module.Augment {
-		processAugments(w, submod, m, a)
+	for _, g := range submod.module.Grouping {
+		processGrouping(w, submod, m, g, keepXmlID)
+	}
+	for _, cont := range submod.module.Container {
+		genTypeForContainer(w, submod.module, cont, submod.module, keepXmlID)
 	}
 
 	// generate the init() function
@@ -344,7 +357,6 @@ func processSubModule(mod *Module, submod *SubModule, outdir string) {
 		fmt.Fprintf(w, "\t%s", s)
 	}
 	fmt.Fprintf(w, "}\n")
-	w.Close()
 }
 
 // To use XMLname we need nc module to be imported. This function check whether we need it or not.
@@ -356,38 +368,3 @@ func checkIfNcImportRequired(submod *SubModule, groupingNames map[string]struct{
 	}
 	return false
 }
-
-// There might be multiple augments with same path.
-// Merge all augments with same path so that only one struct can be generated.
-func mergeAugmentsWithSamePath(entries []yang.Node) []yang.Node {
-	newEntries := []yang.Node{}
-	augments := map[string]*yang.Augment{}
-
-	for _, e := range entries {
-		if e.Kind() == "augment" {
-			aug, ok := e.(*yang.Augment)
-			if !ok {
-				panic("Not an Augment")
-			}
-			if a, found := augments[aug.NName()]; found {
-				// Merge the contents.
-				a.LeafList = append(a.LeafList, aug.LeafList...)
-				a.Leaf = append(a.Leaf, aug.Leaf...)
-				a.Container = append(a.Container, aug.Container...)
-				a.Uses = append(a.Uses, aug.Uses...)
-				a.List = append(a.List, aug.List...)
-				// So on. As we keep supporting more we will add here.
-			} else {
-				augments[aug.NName()] = aug
-			}
-		} else {
-			newEntries = append(newEntries, e)
-		}
-	}
-	for _, aug := range augments {
-		newEntries = append(newEntries, yang.Node(aug))
-	}
-
-	return newEntries
-}
-

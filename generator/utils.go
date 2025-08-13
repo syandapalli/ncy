@@ -179,16 +179,25 @@ func getModulePrefix(m *yang.Module) string {
 }
 
 // 
-func fullName(n yang.Node) string {
-	fn := n.NName()
+func fullName(n yang.Node) (fn string) {
+	fn = n.NName()
 	for (n.ParentNode() != nil) && 
 	    ((n.ParentNode().Kind() != "module") &&
-	     (n.ParentNode().Kind() != "submodule") &&
-	     (n.ParentNode().Kind() != "augment")) {
-		n = n.ParentNode()
+	     (n.ParentNode().Kind() != "submodule")) {
+	     	if n.ParentNode().Kind() == "augment" {
+			aug := n.ParentNode().(*yang.Augment)
+			ref := traverse(aug.Name, aug, false)
+			if ref == nil {
+				errorlog("fullName(): Couldn't complete for %s.%s", n.NName(), n.Kind())
+				return
+			}
+			n = ref
+		} else {
+			n = n.ParentNode()
+		}
 		fn = n.NName() + "_" + fn
 	}
-	return fn
+	return
 }
 
 // Generates a suitable type name to be used. If the type is

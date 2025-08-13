@@ -48,16 +48,16 @@ func genTypeForChoice(w io.Writer, ymod *yang.Module, n yang.Node, prev yang.Nod
 		fmt.Fprintf(w, "\tXMLName nc.XmlId `xml:\"%s %s\"`\n", mod.namespace, choice.NName())
 	}
 	for _, cont := range choice.Container {
-		generateField(w, ymod, cont, addNs)
+		generateField(w, ymod, cont, choice, addNs)
 	}
 	for _, leaf := range choice.Leaf {
-		generateField(w, ymod, leaf, addNs)
+		generateField(w, ymod, leaf, choice, addNs)
 	}
 	for _, list := range choice.List {
-		generateField(w, ymod, list, addNs)
+		generateField(w, ymod, list, choice, addNs)
 	}
 	for _, case1 := range choice.Case {
-		generateField(w, ymod, case1, addNs)
+		generateField(w, ymod, case1, choice, addNs)
 	}
 	fmt.Fprintf(w, "}\n")
 

@@ -17,9 +17,11 @@ func addContainerComment(w io.Writer, c *yang.Container) {
 	s = commentString(s)
 	fmt.Fprint(w, s)
 	fmt.Fprint(w, "//  Description:\n")
-	s = indentString(c.Description.Name)
-	s = commentString(s)
-	fmt.Fprint(w, s)
+	if c.Description != nil {
+		s = indentString(c.Description.Name)
+		s = commentString(s)
+		fmt.Fprint(w, s)
+	}
 	fmt.Fprintln(w, "//-------------------------------------------------------------")
 }
 
@@ -50,25 +52,25 @@ func genTypeForContainer(w io.Writer, ymod *yang.Module, n yang.Node, prev yang.
 		fmt.Fprintf(w, "\tXMLName nc.XmlId `xml:\"%s %s\"`\n", mod.namespace, cont.Name)
 	}
 	for _, c1 := range cont.Container {
-		generateField(w, ymod, c1, addNs)
+		generateField(w, ymod, c1, cont, addNs)
 	}
 	for _, l1 := range cont.Leaf {
-		generateField(w, ymod, l1, addNs)
+		generateField(w, ymod, l1, cont, addNs)
 	}
 	for _, g1 := range cont.Grouping {
-		generateField(w, ymod, g1, addNs)
+		generateField(w, ymod, g1, cont, addNs)
 	}
 	for _, l1 := range cont.List {
-		generateField(w, ymod, l1, addNs)
+		generateField(w, ymod, l1, cont, addNs)
 	}
 	for _, n1 := range cont.Notification {
-		generateField(w, ymod, n1, addNs)
+		generateField(w, ymod, n1, cont, addNs)
 	}
 	for _, c1 := range cont.Choice {
-		generateField(w, ymod, c1, addNs)
+		generateField(w, ymod, c1, cont, addNs)
 	}
 	for _, u1 := range cont.Uses {
-		generateField(w, ymod, u1, addNs)
+		generateField(w, ymod, u1, cont, addNs)
 	}
 	fmt.Fprintf(w, "}\n")
 
